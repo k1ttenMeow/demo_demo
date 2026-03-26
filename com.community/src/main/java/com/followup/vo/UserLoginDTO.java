@@ -1,5 +1,6 @@
 package com.followup.vo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
@@ -24,5 +25,7 @@ public class UserLoginDTO implements Serializable {
     private String password;
 
     @NotNull(message = "角色不能为空")
+    @JsonProperty("userType") // 兼容前端传的userType字段
     private Integer role;
+
 }

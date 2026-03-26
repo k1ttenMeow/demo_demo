@@ -17,7 +17,7 @@
             v-model="loginForm.username"
             placeholder="请输入用户名"
             size="large"
-            prefix-icon="User"
+            prefix-icon="user"
             class="login-input"
             autocomplete="off"
           />
@@ -28,7 +28,7 @@
             type="password"
             placeholder="请输入密码"
             size="large"
-            prefix-icon="Lock"
+            prefix-icon="lock"
             class="login-input"
             autocomplete="off"
             show-password
@@ -36,7 +36,11 @@
         </el-form-item>
         <el-form-item prop="userType" class="role-form-item">
           <label class="form-label">登录角色</label>
-          <el-radio-group v-model="loginForm.userType" size="large" direction="vertical">
+          <el-radio-group
+            v-model="loginForm.userType"
+            size="large"
+            direction="vertical"
+          >
             <el-radio :value="3" border>患者</el-radio>
             <el-radio :value="2" border>医生</el-radio>
             <el-radio :value="1" border>管理员</el-radio>
@@ -47,7 +51,7 @@
             v-model="loginForm.code"
             placeholder="请输入验证码"
             size="large"
-            prefix-icon="Key"
+            prefix-icon="key"
             class="code-input"
             autocomplete="off"
             maxlength="4"
@@ -73,67 +77,65 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-// 引入登录接口
-import { userLogin } from '../api/user.js'
+import { ref, reactive, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import { userLogin } from "../api/user.js";
 
-const router = useRouter()
-const loginRef = ref(null)
-const isLoading = ref(false)
-const verifyCode = ref('')
+const router = useRouter();
+const loginRef = ref(null);
+const isLoading = ref(false);
+const verifyCode = ref("");
 
-// 登录表单：默认选中患者(3)
 const loginForm = reactive({
-  username: '',
-  password: '',
+  username: "",
+  password: "",
   userType: 3,
-  code: ''
-})
+  code: "",
+});
 
-// 表单验证规则
 const loginRules = reactive({
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  userType: [{ required: true, message: '请选择登录角色', trigger: 'change' }],
+  username: [
+    { required: true, message: "请输入用户名", trigger: "blur" },
+    { pattern: /^\S+$/, message: "用户名不能包含空格", trigger: "blur" },
+  ],
+  password: [
+    { required: true, message: "请输入密码", trigger: "blur" },
+    { pattern: /^\S+$/, message: "密码不能包含空格", trigger: "blur" },
+  ],
+  userType: [{ required: true, message: "请选择登录角色", trigger: "change" }],
   code: [
-    { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 4, message: '验证码为4位数字', trigger: 'blur' }
-  ]
-})
+    { required: true, message: "请输入验证码", trigger: "blur" },
+    { len: 4, message: "验证码为4位数字", trigger: "blur" },
+    { pattern: /^\d{4}$/, message: "验证码只能是4位数字", trigger: "blur" },
+  ],
+});
 
-// 生成4位随机验证码
 const generateCode = () => {
-  let code = ''
+  let code = "";
   for (let i = 0; i < 4; i++) {
-    code += Math.floor(Math.random() * 10)
+    code += Math.floor(Math.random() * 10);
   }
-  verifyCode.value = code
-}
+  verifyCode.value = code;
+};
 
-// 刷新验证码
 const refreshCode = () => {
-  generateCode()
-}
+  generateCode();
+};
 
-// 登录核心逻辑
 const handleLogin = async () => {
-  const valid = await loginRef.value.validate()
-  if (!valid) return
-
-  // 验证码校验
-  if (loginForm.code.trim() !== verifyCode.value) {
-    ElMessage.error('验证码输入错误')
-    refreshCode()
-    loginForm.code = ''
-    return
-  }
-
-  isLoading.value = true
   try {
-    console.log('开始调用登录接口，参数：', loginForm)
-    // 调用登录接口
+    const valid = await loginRef.value.validate()
+    if (!valid) return
+
+    if (loginForm.code.trim() !== verifyCode.value) {
+      ElMessage.error('验证码输入错误')
+      refreshCode()
+      loginForm.code = ''
+      return
+    }
+
+    isLoading.value = true
     const res = await userLogin({
       username: loginForm.username.trim(),
       password: loginForm.password.trim(),
@@ -141,37 +143,37 @@ const handleLogin = async () => {
       code: loginForm.code.trim()
     })
 
-    console.log('登录接口返回结果：', res)
-
-    // 【关键1】登录成功，统一存储key为 followup_token，和路由守卫完全一致
-    localStorage.setItem('followup_token', res.data.token)
-    localStorage.setItem('userInfo', JSON.stringify(res.data.userInfo))
-    localStorage.setItem('userType', res.data.userInfo.userType)
-    
-    ElMessage.success('登录成功')
-    
-    // 【关键2】按角色跳转，和路由配置的路径完全一致
-    const userType = res.data.userInfo.userType
-    console.log('登录成功，准备跳转，用户角色：', userType)
-
-    switch (userType) {
-      case 1: // 管理员
-        await router.push('/admin/dashboard')
-        break
-      case 2: // 医生
-        await router.push('/doctor/dashboard')
-        break
-      case 3: // 患者
-        await router.push('/patient/dashboard')
-        break
-      default: // 默认跳转
-        await router.push('/patient/dashboard')
+    if (res.code !== 200) {
+      ElMessage.error(res?.message || '登录失败')
+      refreshCode()
+      loginForm.code = ''
+      return
     }
 
-    console.log('路由跳转执行完成')
+    // ============= 修复：换成 sessionStorage =============
+    sessionStorage.setItem('followup_token', res.data.token)
+    const role = loginForm.userType
+    sessionStorage.setItem('userType', role)
+
+    ElMessage.success('登录成功')
+
+    setTimeout(() => {
+      let targetPath = '/login'
+      if (role === 1) {
+        targetPath = '/admin/dashboard'
+      } else if (role === 2) {
+        targetPath = '/doctor/dashboard'
+      } else if (role === 3) {
+        targetPath = '/patient/dashboard'
+      }
+      router.push(targetPath).catch(() => {
+        window.location.href = targetPath
+      })
+    }, 300)
+
   } catch (err) {
-    console.error('登录失败：', err)
-    ElMessage.error('登录失败，请检查账号密码或角色')
+    console.error('登录异常：', err)
+    ElMessage.error('登录失败，请检查账号密码')
     refreshCode()
     loginForm.code = ''
   } finally {
@@ -179,25 +181,15 @@ const handleLogin = async () => {
   }
 }
 
-// 【关键3】修复onMounted自动跳转逻辑
 onMounted(() => {
   generateCode()
-  // 已登录则直接跳转到对应角色首页
-  const token = localStorage.getItem('followup_token')
-  const userType = localStorage.getItem('userType')
-  if (token && userType) {
-    console.log('已登录，自动跳转')
-    switch (Number(userType)) {
-      case 1:
-        router.push('/admin/dashboard')
-        break
-      case 2:
-        router.push('/doctor/dashboard')
-        break
-      case 3:
-        router.push('/patient/dashboard')
-        break
-    }
+  // ============= 修复：换成 sessionStorage =============
+  const token = sessionStorage.getItem('followup_token')
+  const userTypeStr = sessionStorage.getItem('userType') || '0'
+  const userType = Number(userTypeStr)
+  
+  if (token && !isNaN(userType) && [1,2,3].includes(userType)) {
+    router.push('/dashboard')
   }
 })
 </script>
