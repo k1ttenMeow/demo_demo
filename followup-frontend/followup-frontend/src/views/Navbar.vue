@@ -4,7 +4,7 @@
     <router-link to="/">首页</router-link>
 
     <!-- 仅管理员能看到的菜单 -->
-    <router-link v-if="userType === 1" to="/admin/list">用户管理</router-link>
+    <router-link v-if="userType === 1" to="/sysUser/list">用户管理</router-link>
 
     <!-- 管理员或医生能看到的菜单 -->
     <router-link v-if="userType === 1 || userType === 2" to="/doctor/patients">患者管理</router-link>

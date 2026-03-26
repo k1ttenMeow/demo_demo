@@ -49,7 +49,7 @@ public class DoctorController {
             @RequestParam(defaultValue = "10") Integer pageSize) {
         Page<Doctor> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Doctor> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByDesc(Doctor::getCreateTime);
+       // wrapper.orderByDesc(Doctor::getCreateTime);
         return ResultVO.success(doctorService.page(page, wrapper));
     }
 }

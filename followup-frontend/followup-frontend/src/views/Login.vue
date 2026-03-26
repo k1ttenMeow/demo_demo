@@ -67,6 +67,7 @@
             class="login-btn"
             @click="handleLogin"
             :loading="isLoading"
+            :disabled="isLoading"
           >
             登 录
           </el-button>
@@ -98,10 +99,12 @@ const loginRules = reactive({
   username: [
     { required: true, message: "请输入用户名", trigger: "blur" },
     { pattern: /^\S+$/, message: "用户名不能包含空格", trigger: "blur" },
+    { min: 3, max: 20, message: "用户名长度为3-20位", trigger: "blur" },
   ],
   password: [
     { required: true, message: "请输入密码", trigger: "blur" },
     { pattern: /^\S+$/, message: "密码不能包含空格", trigger: "blur" },
+    { min: 6, max: 20, message: "密码长度为6-20位", trigger: "blur" }, 
   ],
   userType: [{ required: true, message: "请选择登录角色", trigger: "change" }],
   code: [
@@ -150,8 +153,16 @@ const handleLogin = async () => {
       return
     }
 
-    // ============= 修复：换成 sessionStorage =============
-    sessionStorage.setItem('followup_token', res.data.token)
+    // 新增：判断token是否存在
+    if (!res.data) {
+      ElMessage.error('登录成功但未获取到令牌')
+      refreshCode()
+      loginForm.code = ''
+      return
+    }
+
+    // ============= 使用 sessionStorage 存储 =============
+    sessionStorage.setItem('followup_token', res.data)
     const role = loginForm.userType
     sessionStorage.setItem('userType', role)
 
@@ -189,7 +200,19 @@ onMounted(() => {
   const userType = Number(userTypeStr)
   
   if (token && !isNaN(userType) && [1,2,3].includes(userType)) {
-    router.push('/dashboard')
+    //router.push('/dashboard')
+    let targetPath = '/login'
+    if (userType === 1) {
+      targetPath = '/admin/dashboard'
+    } else if (userType === 2) {
+      targetPath = '/doctor/dashboard'
+    } else if (userType === 3) {
+      targetPath = '/patient/dashboard'
+    }
+    router.push(targetPath).catch(err => {
+      console.error('已登录跳转失败：', err)
+      window.location.href = targetPath
+    })
   }
 })
 </script>

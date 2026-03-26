@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-dashboard">
+  <div class="sysUser-dashboard">
     <div class="header">
       <h1>系统管理后台</h1>
       <p class="welcome">欢迎回来，{{ userInfo.realName }}管理员！</p>
@@ -10,12 +10,12 @@
       <el-card class="stat-card" shadow="hover">
         <div class="stat-icon">👥</div>
         <div class="stat-content">
-          <h3>{{ stats.totalUsers }}</h3>
+          <h3>{{ stats.totalUser }}</h3>
           <p>系统总用户</p>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="hover">
-        <div class="stat-icon">👨‍⚕️</div>
+        <div class="stat-icon">👨‍️</div>
         <div class="stat-content">
           <h3>{{ stats.doctorCount }}</h3>
           <p>注册医生</p>
@@ -31,7 +31,7 @@
       <el-card class="stat-card" shadow="hover">
         <div class="stat-icon">📝</div>
         <div class="stat-content">
-          <h3>{{ stats.followupCount }}</h3>
+          <h3>{{ stats.followCount }}</h3>
           <p>随访记录</p>
         </div>
       </el-card>
@@ -67,11 +67,17 @@
       <template #header>
         <div class="card-header">
           <span>👥 最近注册用户</span>
-          <el-button type="primary" size="small" @click="handleViewAllUsers">查看全部</el-button>
+          <div>
+            <el-button type="success" size="small" @click="showRegisterDialog">
+              <el-icon><UserFilled /></el-icon>
+              注册用户
+            </el-button>
+            <el-button type="primary" size="small" @click="handleViewAllUsers">查看全部</el-button>
+          </div>
         </div>
       </template>
       <el-table :data="recentUsers" stripe style="width: 100%">
-        <el-table-column prop="id" label="用户ID" width="80" />
+        <el-table-column prop="id" label="用户 ID" width="80" />
         <el-table-column prop="username" label="登录账号" width="120" />
         <el-table-column prop="realName" label="真实姓名" width="100" />
         <el-table-column prop="phone" label="手机号" width="130" />
@@ -100,14 +106,78 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 注册用户弹窗 -->
+    <el-dialog
+      v-model="registerDialogVisible"
+      title="👤 注册用户"
+      width="500px"
+      :close-on-click-modal="false"
+      @close="resetForm"
+    >
+      <el-form
+        ref="registerFormRef"
+        :model="registerForm"
+        :rules="registerRules"
+        label-width="100px"
+      >
+        <el-form-item label="登录账号" prop="username">
+          <el-input v-model="registerForm.username" placeholder="请输入登录账号" />
+        </el-form-item>
+        <el-form-item label="登录密码" prop="password">
+          <el-input v-model="registerForm.password" type="password" placeholder="请输入登录密码" show-password />
+        </el-form-item>
+        <el-form-item label="真实姓名" prop="realName">
+          <el-input v-model="registerForm.realName" placeholder="请输入真实姓名" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="registerForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+        <el-form-item label="角色" prop="userType">
+          <el-select v-model="registerForm.userType" placeholder="请选择角色" style="width: 100%">
+            <el-option label="管理员" :value="1" />
+            <el-option label="医生" :value="2" />
+            <el-option label="患者" :value="3" />
+          </el-select>
+        </el-form-item>
+        
+        <!-- 医生专属字段 -->
+        <template v-if="registerForm.userType === 2">
+          <el-form-item label="所属科室" prop="department">
+            <el-input v-model="registerForm.department" placeholder="例如：心血管内科、神经内科等" />
+          </el-form-item>
+          <el-form-item label="擅长技能" prop="skill">
+            <el-input v-model="registerForm.skill" placeholder="例如：高血压、糖尿病等" />
+          </el-form-item>
+          <el-form-item label="所属社区" prop="community">
+            <el-input v-model="registerForm.community" placeholder="例如：阳光社区、幸福社区等" />
+          </el-form-item>
+        </template>
+        
+        <el-form-item label="状态" prop="status">
+          <el-switch v-model="registerForm.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="禁用" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="registerDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleRegister" :loading="registerLoading">
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, DataLine, Setting, Document } from '@element-plus/icons-vue'
+import { User, DataLine, Setting, Document, UserFilled } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+
+// 新增加载状态
+const loading = ref(true);
 
 // 用户信息
 const userInfo = reactive({
@@ -116,14 +186,80 @@ const userInfo = reactive({
 
 // 统计数据
 const stats = reactive({
-  totalUsers: 0,
+  totalUser: 0,
   doctorCount: 0,
   patientCount: 0,
-  followupCount: 0
+  followCount: 0
 })
 
 // 最近注册用户
 const recentUsers = ref([])
+
+// 注册用户弹窗
+const registerDialogVisible = ref(false)
+const registerFormRef = ref(null)
+const registerLoading = ref(false)
+
+const registerForm = reactive({
+  username: '',
+  password: '',
+  realName: '',
+  phone: '',
+  userType: 2,
+  status: 1,
+  // 医生专属字段
+  department: '',
+  skill: '',
+  community: ''
+})
+
+const registerRules = {
+  username: [
+    { required: true, message: '请输入登录账号', trigger: 'blur' },
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入登录密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于 6 位', trigger: 'blur' }
+  ],
+  realName: [
+    { required: true, message: '请输入真实姓名', trigger: 'blur' }
+  ],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ],
+  userType: [
+    { required: true, message: '请选择角色', trigger: 'change' }
+  ],
+  department: [
+    { required: true, message: '请输入所属科室', trigger: 'blur', validator: (rule, value, callback) => {
+      if (registerForm.userType === 2 && !value) {
+        callback(new Error('医生必须填写科室'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  skill: [
+    { required: true, message: '请输入擅长技能', trigger: 'blur', validator: (rule, value, callback) => {
+      if (registerForm.userType === 2 && !value) {
+        callback(new Error('医生必须填写擅长技能'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  community: [
+    { required: true, message: '请输入所属社区', trigger: 'blur', validator: (rule, value, callback) => {
+      if (registerForm.userType === 2 && !value) {
+        callback(new Error('医生必须填写所属社区'))
+      } else {
+        callback()
+      }
+    }}
+  ]
+}
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -164,6 +300,8 @@ const handleViewAllUsers = () => {
 const handleEditUser = (row) => {
   ElMessage.info(`编辑用户：${row.realName}`)
 }
+// ... existing code ...
+
 const handleDeleteUser = async (row) => {
   try {
     await ElMessageBox.confirm(
@@ -175,38 +313,104 @@ const handleDeleteUser = async (row) => {
         type: 'warning'
       }
     )
-    ElMessage.success('删除成功')
-  } catch {
-    ElMessage.info('已取消删除')
+    
+    // 调用后端删除接口
+    const res = await request.delete(`/admin/user/${row.id}`)
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      loadData() // 刷新列表
+    } else {
+      ElMessage.error(res.msg || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败，请重试')
+    } else {
+      ElMessage.info('已取消删除')
+    }
   }
+}
+
+// ... existing code ...
+
+
+// 显示注册弹窗
+const showRegisterDialog = () => {
+  registerDialogVisible.value = true
+}
+
+// 重置表单
+const resetForm = () => {
+  if (registerFormRef.value) {
+    registerFormRef.value.resetFields()
+  }
+  registerForm.username = ''
+  registerForm.password = ''
+  registerForm.realName = ''
+  registerForm.phone = ''
+  registerForm.userType = 2
+  registerForm.status = 1
+  registerForm.department = ''
+  registerForm.skill = ''
+  registerForm.community = ''
+}
+
+// 处理注册
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
+  
+  await registerFormRef.value.validate(async (valid) => {
+    if (valid) {
+      registerLoading.value = true
+      try {
+        const res = await request.post('/admin/user', registerForm)
+        if (res.code === 200) {
+          ElMessage.success('注册成功')
+          registerDialogVisible.value = false
+          resetForm()
+          loadData() // 刷新列表
+        } else {
+          ElMessage.error(res.msg || '注册失败')
+        }
+      } catch (error) {
+        ElMessage.error('注册失败，请重试')
+      } finally {
+        registerLoading.value = false
+      }
+    }
+  })
 }
 
 // 加载数据
 const loadData = async () => {
   try {
-    // 从本地存储获取用户基础信息
-    const userInfoStr = localStorage.getItem('userInfo')
-    if (userInfoStr) {
-      Object.assign(userInfo, JSON.parse(userInfoStr))
+    console.log("=== 请求管理员页面数据 ===");
+    // 1. 请求统计数据
+    const statsRes = await request.get("/admin/stats");
+    console.log("统计数据响应:", statsRes);
+    if (statsRes.code === 200 && statsRes.data) {
+      // 正确映射后端返回的字段
+      stats.totalUser = statsRes.data.totalUser || 0;
+      stats.doctorCount = statsRes.data.doctorCount || 0;
+      stats.patientCount = statsRes.data.patientCount || 0;
+      stats.followCount = statsRes.data.followCount || 0;
+    } else {
+      throw new Error(statsRes.msg || "获取统计数据失败");
     }
 
-    // 并行加载所有数据
-    const [statsRes, usersRes] = await Promise.all([
-      request.get('/admin/stats'),
-      request.get('/admin/user/recent')
-    ])
-
-    if (statsRes.code === 200) {
-      Object.assign(stats, statsRes.data)
-    }
+    // 2. 请求最近用户数据
+    const usersRes = await request.get("/admin/recentUser");
+    console.log("最近用户响应:", usersRes);
     if (usersRes.code === 200) {
-      recentUsers.value = usersRes.data || []
+      recentUsers.value = usersRes.data || [];
+    } else {
+      throw new Error(usersRes.msg || "获取最近用户失败");
     }
   } catch (err) {
-    console.error('加载数据失败：', err)
-    ElMessage.error('加载数据失败')
+    console.error("加载数据失败:", err);
+    ElMessage.error("加载数据失败，请检查后端服务");
   }
-}
+};
 
 onMounted(() => {
   loadData()
@@ -214,7 +418,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-dashboard {
+.sysUser-dashboard {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;

@@ -1,55 +1,93 @@
 package com.followup.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.followup.entity.Admin;
+import com.followup.common.R;
+import com.followup.entity.SysUser;
 import com.followup.service.AdminService;
-import com.followup.vo.ResultVO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-/**
- * 管理员模块 控制器
- *
- * @author system
- * @date 2026-03-23
- */
 @RestController
 @RequestMapping("/admin")
 public class AdminController {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
+
     @Resource
     private AdminService adminService;
 
-    @PostMapping("/add")
-    public ResultVO<Boolean> addAdmin(@RequestBody Admin admin) {
-        return ResultVO.success(adminService.save(admin));
+    // 统计接口：异常时返回标准错误 JSON
+    @GetMapping("/stats")
+    public R<Map<String, Object>> getStats() {
+        try {
+            Map<String, Object> stats = adminService.getStats();
+            // 终极兜底：确保永远返回非 null 的 Map
+            if (stats == null) {
+                stats = new HashMap<>();
+                stats.put("totalUser", 0);
+                stats.put("doctorCount", 0);
+                stats.put("patientCount", 0);
+                stats.put("followCount", 0);
+            }
+            return R.success(stats);
+        } catch (Exception e) {
+            log.error("获取统计数据失败", e);
+            return R.error("获取统计数据失败");
+        }
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResultVO<Boolean> deleteAdmin(@PathVariable Long id) {
-        return ResultVO.success(adminService.removeById(id));
+    // 最近用户接口：异常时返回标准错误 JSON
+    @GetMapping("/recentUser")
+    public R<List<SysUser>> getRecentUser() {
+        try {
+            List<SysUser> users = adminService.getRecentUser();
+            // 终极兜底：确保永远返回非 null 的 List
+            if (users == null) {
+                users = new ArrayList<>();
+            }
+            return R.success(users);
+        } catch (Exception e) {
+            log.error("获取最近用户失败", e);
+            return R.error("获取最近用户失败");
+        }
     }
 
-    @PutMapping("/update")
-    public ResultVO<Boolean> updateAdmin(@RequestBody Admin admin) {
-        return ResultVO.success(adminService.updateById(admin));
+    // 删除用户接口
+    @DeleteMapping("/user/{id}")
+    public R<Boolean> delete(@PathVariable Long id) {
+        try {
+            return R.success(adminService.deleteUser(id));
+        } catch (Exception e) {
+            log.error("删除用户异常", e);
+            return R.error("删除失败");
+        }
     }
 
-    @GetMapping("/info/{id}")
-    public ResultVO<Admin> getAdminInfo(@PathVariable Long id) {
-        return ResultVO.success(adminService.getById(id));
+    // 新增：注册用户接口
+    @PostMapping("/user")
+    public R<Boolean> register(@RequestBody SysUser user) {
+        try {
+            return R.success(adminService.registerUser(user));
+        } catch (Exception e) {
+            log.error("注册用户异常", e);
+            return R.error("注册失败");
+        }
     }
 
-    @GetMapping("/page")
-    public ResultVO<Page<Admin>> getAdminPage(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        Page<Admin> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<Admin> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByDesc(Admin::getCreateTime);
-        return ResultVO.success(adminService.page(page, wrapper));
+    // 更新用户接口
+    @PutMapping("/user")
+    public R<Boolean> update(@RequestBody SysUser user) {
+        try {
+            return R.success(adminService.updateUser(user));
+        } catch (Exception e) {
+            log.error("修改用户异常", e);
+            return R.error("修改失败");
+        }
     }
 }

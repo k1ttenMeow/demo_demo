@@ -20,15 +20,15 @@ public class Doctor implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 主键ID
+     * 主键 ID
      */
     @TableId(type = IdType.AUTO)
     private Long id;
 
     /**
-     * 医生姓名
+     * 用户 ID（关联 user 表）
      */
-    private String doctorName;
+    private Long userId;
 
     /**
      * 所属科室
@@ -36,36 +36,24 @@ public class Doctor implements Serializable {
     private String department;
 
     /**
-     * 手机号
+     * 擅长技能
      */
-    private String phone;
+    private String skill;
 
     /**
-     * 职称
+     * 所属社区
      */
-    private String title;
+    private String community;
 
     /**
-     * 用户ID（关联user表）
+     * 创建时间（非数据库字段）
      */
-    private Long userId;
-
-    /**
-     * 创建时间
-     */
-    @TableField(fill = FieldFill.INSERT)
+    @TableField(exist = false)
     private LocalDateTime createTime;
 
     /**
-     * 更新时间
+     * 更新时间（非数据库字段）
      */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
+    @TableField(exist = false)
     private LocalDateTime updateTime;
-
-    /**
-     * 逻辑删除 0-未删除 1-已删除
-     */
-    @TableLogic
-    @TableField(value = "is_deleted")
-    private Integer isDeleted;
 }
