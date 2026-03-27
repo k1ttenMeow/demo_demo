@@ -6,6 +6,8 @@ import com.followup.service.AdminService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
@@ -39,6 +41,25 @@ public class AdminController {
         } catch (Exception e) {
             log.error("获取统计数据失败", e);
             return R.error("获取统计数据失败");
+        }
+    }
+
+    // 新增：分页查询用户列表
+    @GetMapping("/user/list")
+    public R<Page<SysUser>> getUserList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String realName,
+            @RequestParam(required = false) Integer userType,
+            @RequestParam(required = false) String phone
+    ) {
+        try {
+            Page<SysUser> userPage = adminService.getUserList(page, size, username, realName, userType, phone);
+            return R.success(userPage);
+        } catch (Exception e) {
+            log.error("查询用户列表异常", e);
+            return R.error("查询失败");
         }
     }
 

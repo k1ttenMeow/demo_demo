@@ -6,40 +6,40 @@
         <p class="login-desc">请输入账号密码完成登录</p>
       </div>
       <el-form
-        :model="loginForm"
-        ref="loginRef"
-        :rules="loginRules"
-        label-width="0px"
-        class="login-form"
+          :model="loginForm"
+          ref="loginRef"
+          :rules="loginRules"
+          label-width="0px"
+          class="login-form"
       >
         <el-form-item prop="username">
           <el-input
-            v-model="loginForm.username"
-            placeholder="请输入用户名"
-            size="large"
-            prefix-icon="user"
-            class="login-input"
-            autocomplete="off"
+              v-model="loginForm.username"
+              placeholder="请输入用户名"
+              size="large"
+              prefix-icon="user"
+              class="login-input"
+              autocomplete="off"
           />
         </el-form-item>
         <el-form-item prop="password">
           <el-input
-            v-model="loginForm.password"
-            type="password"
-            placeholder="请输入密码"
-            size="large"
-            prefix-icon="lock"
-            class="login-input"
-            autocomplete="off"
-            show-password
+              v-model="loginForm.password"
+              type="password"
+              placeholder="请输入密码"
+              size="large"
+              prefix-icon="lock"
+              class="login-input"
+              autocomplete="off"
+              show-password
           />
         </el-form-item>
         <el-form-item prop="userType" class="role-form-item">
           <label class="form-label">登录角色</label>
           <el-radio-group
-            v-model="loginForm.userType"
-            size="large"
-            direction="vertical"
+              v-model="loginForm.userType"
+              size="large"
+              direction="vertical"
           >
             <el-radio :value="3" border>患者</el-radio>
             <el-radio :value="2" border>医生</el-radio>
@@ -48,13 +48,13 @@
         </el-form-item>
         <el-form-item prop="code" class="code-form-item">
           <el-input
-            v-model="loginForm.code"
-            placeholder="请输入验证码"
-            size="large"
-            prefix-icon="key"
-            class="code-input"
-            autocomplete="off"
-            maxlength="4"
+              v-model="loginForm.code"
+              placeholder="请输入验证码"
+              size="large"
+              prefix-icon="key"
+              class="code-input"
+              autocomplete="off"
+              maxlength="4"
           />
           <div class="code-box" @click="refreshCode">
             {{ verifyCode }}
@@ -62,12 +62,12 @@
         </el-form-item>
         <el-form-item>
           <el-button
-            type="primary"
-            size="large"
-            class="login-btn"
-            @click="handleLogin"
-            :loading="isLoading"
-            :disabled="isLoading"
+              type="primary"
+              size="large"
+              class="login-btn"
+              @click="handleLogin"
+              :loading="isLoading"
+              :disabled="isLoading"
           >
             登 录
           </el-button>
@@ -82,6 +82,7 @@ import { ref, reactive, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { userLogin } from "../api/user.js";
+import request from "@/utils/request";
 
 const router = useRouter();
 const loginRef = ref(null);
@@ -99,18 +100,18 @@ const loginRules = reactive({
   username: [
     { required: true, message: "请输入用户名", trigger: "blur" },
     { pattern: /^\S+$/, message: "用户名不能包含空格", trigger: "blur" },
-    { min: 3, max: 20, message: "用户名长度为3-20位", trigger: "blur" },
+    { min: 3, max: 20, message: "用户名长度为 3-20 位", trigger: "blur" },
   ],
   password: [
     { required: true, message: "请输入密码", trigger: "blur" },
     { pattern: /^\S+$/, message: "密码不能包含空格", trigger: "blur" },
-    { min: 6, max: 20, message: "密码长度为6-20位", trigger: "blur" }, 
+    { min: 6, max: 20, message: "密码长度为 6-20 位", trigger: "blur" },
   ],
   userType: [{ required: true, message: "请选择登录角色", trigger: "change" }],
   code: [
     { required: true, message: "请输入验证码", trigger: "blur" },
-    { len: 4, message: "验证码为4位数字", trigger: "blur" },
-    { pattern: /^\d{4}$/, message: "验证码只能是4位数字", trigger: "blur" },
+    { len: 4, message: "验证码为 4 位数字", trigger: "blur" },
+    { pattern: /^\d{4}$/, message: "验证码只能是 4 位数字", trigger: "blur" },
   ],
 });
 
@@ -139,6 +140,13 @@ const handleLogin = async () => {
     }
 
     isLoading.value = true
+    console.log('=== 开始登录 ===')
+    console.log('登录参数:', {
+      username: loginForm.username.trim(),
+      userType: loginForm.userType,
+      code: loginForm.code.trim()
+    })
+
     const res = await userLogin({
       username: loginForm.username.trim(),
       password: loginForm.password.trim(),
@@ -146,25 +154,121 @@ const handleLogin = async () => {
       code: loginForm.code.trim()
     })
 
+    console.log('登录接口返回:', res)
+
     if (res.code !== 200) {
       ElMessage.error(res?.message || '登录失败')
       refreshCode()
       loginForm.code = ''
+      isLoading.value = false
       return
     }
 
-    // 新增：判断token是否存在
+    // 判断 token 是否存在
     if (!res.data) {
       ElMessage.error('登录成功但未获取到令牌')
       refreshCode()
       loginForm.code = ''
+      isLoading.value = false
       return
     }
 
-    // ============= 使用 sessionStorage 存储 =============
+    // ============= 存储 token 和角色 =============
     sessionStorage.setItem('followup_token', res.data)
     const role = loginForm.userType
     sessionStorage.setItem('userType', role)
+
+    // ============= 新增：构建并存储用户信息 =============
+    // 先构建基础用户信息对象
+    const userInfo = {
+      username: loginForm.username.trim(),
+      realName: '',  // 稍后从后端获取
+      phone: '',     // 稍后从后端获取
+      userType: role,
+      role: role
+    }
+
+    console.log('基础用户信息:', userInfo)
+
+    // 根据角色不同，查询对应的详细信息
+    try {
+      if (role === 3) {
+        // 患者 - 查询患者列表获取详细信息
+        console.log('正在查询患者信息...')
+        const patientRes = await request.get('/patient/list', {
+          params: {
+            page: 1,
+            size: 10
+          }
+        })
+
+        console.log('患者列表返回:', patientRes)
+
+        if (patientRes.code === 200 && patientRes.data && patientRes.data.records.length > 0) {
+          // 找到匹配的患者
+          const patient = patientRes.data.records.find(p => p.username === userInfo.username)
+
+          if (patient) {
+            console.log('找到匹配的患者:', patient)
+            userInfo.id = patient.id
+            userInfo.userId = patient.userId
+            userInfo.patientId = patient.id
+            userInfo.realName = patient.realName || ''
+            userInfo.phone = patient.phone || ''
+          } else {
+            console.warn('未找到匹配的患者记录')
+            // 使用第一个患者作为临时方案
+            const firstPatient = patientRes.data.records[0]
+            userInfo.id = firstPatient.id
+            userInfo.userId = firstPatient.userId
+            userInfo.patientId = firstPatient.id
+            userInfo.realName = firstPatient.realName || ''
+            userInfo.phone = firstPatient.phone || ''
+          }
+        }
+      } else if (role === 2) {
+        // 医生 - 查询医生列表获取详细信息
+        console.log('正在查询医生信息...')
+        const doctorRes = await request.get('/doctor/list', {
+          params: {
+            page: 1,
+            size: 10
+          }
+        })
+
+        console.log('医生列表返回:', doctorRes)
+
+        if (doctorRes.code === 200 && doctorRes.data && doctorRes.data.records.length > 0) {
+          const doctor = doctorRes.data.records.find(d => d.username === userInfo.username)
+
+          if (doctor) {
+            console.log('找到匹配的医生:', doctor)
+            userInfo.id = doctor.id
+            userInfo.userId = doctor.userId
+            userInfo.doctorId = doctor.id
+            userInfo.realName = doctor.realName || ''
+            userInfo.phone = doctor.phone || ''
+            userInfo.department = doctor.department || ''
+            userInfo.skill = doctor.skill || ''
+            userInfo.community = doctor.community || ''
+          }
+        }
+      } else if (role === 1) {
+        // 管理员
+        userInfo.realName = '管理员'
+      }
+
+      console.log('最终用户信息:', userInfo)
+
+      // 存储用户信息到 sessionStorage
+      sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
+      console.log('✅ 用户信息已保存到 sessionStorage')
+
+    } catch (err) {
+      console.error('❌ 查询用户详细信息失败:', err)
+      // 即使查询失败，也至少保存基础信息
+      sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
+    }
 
     ElMessage.success('登录成功')
 
@@ -194,13 +298,12 @@ const handleLogin = async () => {
 
 onMounted(() => {
   generateCode()
-  // ============= 修复：换成 sessionStorage =============
+  // 检查是否已登录
   const token = sessionStorage.getItem('followup_token')
   const userTypeStr = sessionStorage.getItem('userType') || '0'
   const userType = Number(userTypeStr)
-  
+
   if (token && !isNaN(userType) && [1,2,3].includes(userType)) {
-    //router.push('/dashboard')
     let targetPath = '/login'
     if (userType === 1) {
       targetPath = '/admin/dashboard'

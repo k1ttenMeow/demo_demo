@@ -3,10 +3,14 @@ package com.followup.service.impl;
 import com.followup.entity.SysUser;
 import com.followup.mapper.DoctorMapper;
 import com.followup.entity.Doctor;
-import com.followup.mapper.FollowupRecordMapper;
+import com.followup.mapper.FollowRecordMapper;
 import com.followup.mapper.SysUserMapper;
 import com.followup.service.AdminService;
+import com.followup.entity.Patient;
+import com.followup.mapper.PatientMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +27,13 @@ public class AdminServiceImpl implements AdminService {
     private SysUserMapper sysUserMapper;
 
     @Resource
-    private FollowupRecordMapper followMapper;
+    private FollowRecordMapper followMapper;
 
     @Resource
     private DoctorMapper doctorMapper;
+
+    @Resource
+    private PatientMapper patientMapper;
 
     @Override
     public Map<String, Object> getStats() {
@@ -34,7 +41,7 @@ public class AdminServiceImpl implements AdminService {
         stats.put("totalUser", sysUserMapper.totalUser() != null ? sysUserMapper.totalUser() : 0);
         stats.put("doctorCount", sysUserMapper.doctorCount() != null ? sysUserMapper.doctorCount() : 0);
         stats.put("patientCount", sysUserMapper.patientCount() != null ? sysUserMapper.patientCount() : 0);
-        stats.put("followCount", followMapper.followCount() != null ? followMapper.followCount() : 0);
+        stats.put("followCount", followMapper.selectCount(new LambdaQueryWrapper<>()) != null ? followMapper.selectCount(new LambdaQueryWrapper<>()) : 0);
         return stats;
     }
 
@@ -84,6 +91,23 @@ public class AdminServiceImpl implements AdminService {
             }
         }
 
+        // 如果是患者，同时创建患者记录
+        if (user.getUserType() == 3) {
+            Patient patient = new Patient();
+            patient.setUserId(user.getId());
+            patient.setDoctorId(1L); // 默认分配给医生 ID=1
+            patient.setChronicType(user.getChronicType());
+            patient.setAge(user.getAge());
+            patient.setAddress(user.getAddress());
+            patient.setEmergencyContact(user.getEmergencyContact());
+            patient.setEmergencyPhone(user.getEmergencyPhone());
+
+            int patientResult = patientMapper.insert(patient);
+            if (patientResult <= 0) {
+                throw new RuntimeException("创建患者信息失败");
+            }
+        }
+
         return true;
     }
 
@@ -114,10 +138,48 @@ public class AdminServiceImpl implements AdminService {
                 }
             }
 
+            // 如果是患者，先删除患者表记录
+            if (user.getUserType() == 3) {
+                Patient patient = patientMapper.selectOne(
+                        new LambdaQueryWrapper<Patient>()
+                                .eq(Patient::getUserId, id)
+                );
+                if (patient != null) {
+                    patientMapper.deleteById(patient.getId());
+                }
+            }
+
             // 再删除用户表记录
-            return sysUserMapper.deleteById(id) > 0;
+            // 软删除：更新 is_deleted 字段为 1
+            user.setIsDeleted(1);
+            return sysUserMapper.updateById(user) > 0;
         } catch (Exception e) {
             throw new RuntimeException("删除用户失败：" + e.getMessage());
         }
+    }
+    @Override
+    public Page<SysUser> getUserList(Integer page, Integer size, String username, String realName, Integer userType, String phone) {
+        Page<SysUser> userPage = new Page<>(page, size);
+
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+
+        // 动态添加查询条件
+        if (StringUtils.hasText(username)) {
+            wrapper.like(SysUser::getUsername, username);
+        }
+        if (StringUtils.hasText(realName)) {
+            wrapper.like(SysUser::getRealName, realName);
+        }
+        if (userType != null) {
+            wrapper.eq(SysUser::getUserType, userType);
+        }
+        if (StringUtils.hasText(phone)) {
+            wrapper.like(SysUser::getPhone, phone);
+        }
+
+        // 按创建时间降序
+        wrapper.orderByDesc(SysUser::getCreateTime);
+
+        return sysUserMapper.selectPage(userPage, wrapper);
     }
 }

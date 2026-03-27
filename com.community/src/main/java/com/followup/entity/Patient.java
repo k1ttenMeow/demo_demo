@@ -20,20 +20,25 @@ public class Patient implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 主键ID
+     * 主键 ID
      */
     @TableId(type = IdType.AUTO)
     private Long id;
 
     /**
-     * 患者姓名
+     * 用户 ID（关联 user 表）
      */
-    private String patientName;
+    private Long userId;
 
     /**
-     * 性别 0-男 1-女
+     * 责任医生 ID
      */
-    private Integer gender;
+    private Long doctorId;
+
+    /**
+     * 慢病类型
+     */
+    private String chronicType;
 
     /**
      * 年龄
@@ -41,29 +46,49 @@ public class Patient implements Serializable {
     private Integer age;
 
     /**
-     * 手机号
+     * 地址
      */
+    private String address;
+
+    /**
+     * 紧急联系人
+     */
+    private String emergencyContact;
+
+    /**
+     * 紧急联系电话
+     */
+    private String emergencyPhone;
+
+    /**
+     * 患者姓名（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String realName;
+
+    /**
+     * 登录账号（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String username;
+
+    /**
+     * 手机号（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
     private String phone;
 
     /**
-     * 身份证号
+     * 状态（关联查询字段，非数据库字段）
      */
-    private String idCard;
+    @TableField(exist = false)
+    private Integer status;
 
     /**
-     * 诊断信息
+     * 责任医生姓名（关联查询字段，非数据库字段）
      */
-    private String diagnosis;
-
-    /**
-     * 负责医生ID
-     */
-    private Long doctorId;
-
-    /**
-     * 用户ID（关联user表）
-     */
-    private Long userId;
+    @TableField(exist = false)
+    private String doctorName;
 
     /**
      * 创建时间
@@ -76,11 +101,4 @@ public class Patient implements Serializable {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
-
-    /**
-     * 逻辑删除 0-未删除 1-已删除
-     */
-    @TableLogic
-    @TableField(value = "is_deleted")
-    private Integer isDeleted;
 }

@@ -6,6 +6,12 @@ import Login from '../views/Login.vue'
 import PatientDashboard from '../views/patient/PatientDashboard.vue'
 import DoctorDashboard from '../views/doctor/DoctorDashboard.vue'
 import AdminDashboard from '../views/admin/AdminDashboard.vue'
+import FollowupAppoint from '../views/followup/FollowupAppoint.vue'
+import FollowupPlan from '../views/followup/FollowupPlan.vue'
+import FollowupRecord from '../views/followup/FollowupRecord.vue'
+import PatientManage from '../views/patient/PatientManage.vue'
+import DoctorManage from '../views/doctor/DoctorManage.vue'
+
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -26,6 +32,40 @@ const routes = [
       }
     }
   },
+    // 新增随访管理路由
+  { 
+    path: '/followup/appoint', 
+    name: 'FollowupAppoint', 
+    component: FollowupAppoint, 
+    meta: { requiresAuth: true, role: 1 } 
+  },
+  { 
+    path: '/followup/plan', 
+    name: 'FollowupPlan', 
+    component: FollowupPlan, 
+    meta: { requiresAuth: true, role: 1 } 
+  },
+  { 
+    path: '/followup/record', 
+    name: 'FollowupRecord', 
+    component: FollowupRecord, 
+    meta: { requiresAuth: true, role: 1 } 
+  },
+  
+  // 新增患者和医生管理路由
+  { 
+    path: '/patient/manage', 
+    name: 'PatientManage', 
+    component: PatientManage, 
+    meta: { requiresAuth: true, role: 1 } 
+  },
+  { 
+    path: '/doctor/manage', 
+    name: 'DoctorManage', 
+    component: DoctorManage, 
+    meta: { requiresAuth: true, role: 1 } 
+  },
+  
   { path: '/:pathMatch(.*)*', redirect: '/login' }
 ]
 

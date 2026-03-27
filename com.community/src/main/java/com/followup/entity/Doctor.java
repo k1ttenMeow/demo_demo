@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
  *
  * @author system
  * @date 2026-03-23
- * @table doctor
  */
 @Data
 @TableName("doctor")
@@ -46,14 +45,38 @@ public class Doctor implements Serializable {
     private String community;
 
     /**
-     * 创建时间（非数据库字段）
+     * 医生姓名（关联查询字段，非数据库字段）
      */
     @TableField(exist = false)
+    private String realName;
+
+    /**
+     * 登录账号（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String username;
+
+    /**
+     * 手机号（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String phone;
+
+    /**
+     * 状态（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
+    private Integer status;
+
+    /**
+     * 创建时间
+     */
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
     /**
-     * 更新时间（非数据库字段）
+     * 更新时间
      */
-    @TableField(exist = false)
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

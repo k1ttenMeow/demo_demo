@@ -1,5 +1,6 @@
 package com.followup.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.followup.entity.SysUser;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,11 @@ public interface AdminService {
     List<SysUser> getRecentUser();
 
     /**
+     * 分页查询用户列表
+     */
+    Page<SysUser> getUserList(Integer page, Integer size, String username, String realName, Integer userType, String phone);
+
+    /**
      * 注册用户
      */
     boolean registerUser(SysUser user);
@@ -29,4 +35,5 @@ public interface AdminService {
      * 修改用户
      */
     boolean updateUser(SysUser user);
+
 }

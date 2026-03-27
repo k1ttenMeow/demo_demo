@@ -1,243 +1,250 @@
 <template>
   <div class="doctor-dashboard">
     <div class="header">
-      <h1>医生工作台</h1>
-      <p class="welcome">欢迎回来，{{ userInfo.realName }}医生！</p>
+      <h1>👨‍⚕️ 医生工作台</h1>
+      <p class="welcome">欢迎回来，{{ doctorInfo.realName || '医生' }}！</p>
     </div>
+
+    <!-- 个人信息卡片 -->
+    <el-card class="info-card" shadow="hover">
+      <template #header>
+        <span>📋 医生信息</span>
+      </template>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="姓名">{{ doctorInfo.realName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="科室">{{ doctorInfo.department || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="技能">{{ doctorInfo.skill || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="所属社区">{{ doctorInfo.community || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="手机号">{{ doctorInfo.phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag v-if="doctorInfo.status === 1" type="success">正常</el-tag>
+          <el-tag v-else-if="doctorInfo.status === 0" type="danger">禁用</el-tag>
+          <el-tag v-else>未知</el-tag>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
 
     <!-- 统计卡片 -->
     <div class="stats-grid">
       <el-card class="stat-card" shadow="hover">
-        <div class="stat-icon">👥</div>
+        <div class="stat-icon">📅</div>
         <div class="stat-content">
-          <h3>{{ stats.patientCount }}</h3>
-          <p>我的患者</p>
+          <h3>{{ stats.appointCount }}</h3>
+          <p>随访预约</p>
+          <el-button type="primary" size="small" @click="handleAppoint">处理预约</el-button>
         </div>
       </el-card>
+
       <el-card class="stat-card" shadow="hover">
-        <div class="stat-icon">⏰</div>
+        <div class="stat-icon">📝</div>
         <div class="stat-content">
-          <h3>{{ stats.pendingCount }}</h3>
-          <p>待办随访</p>
+          <h3>{{ stats.planCount }}</h3>
+          <p>随访计划</p>
+          <el-button type="success" size="small" @click="handlePlan">查看计划</el-button>
         </div>
       </el-card>
+
       <el-card class="stat-card" shadow="hover">
-        <div class="stat-icon">✅</div>
+        <div class="stat-icon">📊</div>
         <div class="stat-content">
-          <h3>{{ stats.completedCount }}</h3>
-          <p>本月完成</p>
-        </div>
-      </el-card>
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-icon">📋</div>
-        <div class="stat-content">
-          <h3>{{ stats.appointmentCount }}</h3>
-          <p>待确认预约</p>
+          <h3>{{ stats.recordCount }}</h3>
+          <p>随访记录</p>
+          <el-button type="warning" size="small" @click="handleRecord">查看记录</el-button>
         </div>
       </el-card>
     </div>
 
-    <!-- 个人信息 -->
-    <el-card class="info-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>👨‍⚕️ 我的信息</span>
-          <el-button type="primary" size="small" @click="handleUpdateInfo">更新信息</el-button>
-        </div>
-      </template>
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="姓名">{{ doctorInfo.realName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="所属科室">{{ doctorInfo.deptName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="职称">{{ doctorInfo.title || '主治医师' }}</el-descriptions-item>
-        <el-descriptions-item label="管辖社区">{{ doctorInfo.manageCommunity || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="擅长病种" :span="2">{{ doctorInfo.specialty || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="可预约时段" :span="2">{{ doctorInfo.appointmentTime || '-' }}</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <!-- 待办随访任务 -->
-    <el-card class="info-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>⏰ 待办随访任务</span>
-          <el-button type="primary" size="small" @click="handleAddFollowup">新增随访</el-button>
-        </div>
-      </template>
-      <el-table :data="pendingFollowups" stripe style="width: 100%">
-        <el-table-column prop="patientName" label="患者姓名" width="120" />
-        <el-table-column prop="planType" label="计划类型" width="120" />
-        <el-table-column prop="nextFollowTime" label="计划随访时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.nextFollowTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleStartFollowup(row)">开始随访</el-button>
-            <el-button size="small" @click="handleViewPatient(row)">查看患者</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <!-- 我的患者列表 -->
-    <el-card class="info-card" shadow="hover">
-      <template #header>
-        <span>👥 我的患者</span>
-      </template>
-      <el-table :data="myPatients" stripe style="width: 100%">
-        <el-table-column prop="realName" label="姓名" width="100" />
-        <el-table-column prop="gender" label="性别" width="80">
-          <template #default="{ row }">
-            {{ row.gender === 1 ? '男' : '女' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="age" label="年龄" width="80" />
-        <el-table-column prop="chronicDisease" label="慢性病种" />
-        <el-table-column prop="address" label="居住地址" show-overflow-tooltip />
-        <el-table-column label="操作" width="180">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleViewDetail(row)">查看详情</el-button>
-            <el-button size="small" @click="handleAddRecord(row)">添加记录</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <!-- 快捷操作 -->
+    <div class="quick-actions">
+      <h3>⚡ 快捷操作</h3>
+      <div class="action-buttons">
+        <el-button type="primary" @click="goToPatientManage">患者管理</el-button>
+        <el-button type="success" @click="goToFollowupAppoint">随访预约</el-button>
+        <el-button type="warning" @click="goToFollowupPlan">随访计划</el-button>
+        <el-button type="info" @click="goToFollowupRecord">随访记录</el-button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
-// 用户信息
-const userInfo = reactive({
-  realName: ''
-})
+const router = useRouter()
 
-// 医生信息
 const doctorInfo = reactive({
+  id: null,
   realName: '',
-  deptName: '',
-  title: '',
-  specialty: '',
-  manageCommunity: '',
-  appointmentTime: ''
+  department: '',
+  skill: '',
+  community: '',
+  phone: '',
+  status: null
 })
 
-// 统计数据
 const stats = reactive({
-  patientCount: 0,
-  pendingCount: 0,
-  completedCount: 0,
-  appointmentCount: 0
+  appointCount: 0,
+  planCount: 0,
+  recordCount: 0
 })
 
-// 待办随访
-const pendingFollowups = ref([])
-
-// 我的患者
-const myPatients = ref([])
-
-// 格式化日期
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
-}
-
-// 获取状态类型
-const getStatusType = (status) => {
-  const map = { 0: 'warning', 1: 'success', 2: 'danger' }
-  return map[status] || 'info'
-}
-
-// 获取状态文本
-const getStatusText = (status) => {
-  const map = { 0: '未完成', 1: '已完成', 2: '逾期' }
-  return map[status] || '未知'
-}
-
-// 更新信息
-const handleUpdateInfo = () => {
-  ElMessage.info('跳转到更新信息页面')
-}
-
-// 新增随访
-const handleAddFollowup = () => {
-  ElMessage.info('跳转到新增随访页面')
-}
-
-// 开始随访
-const handleStartFollowup = (row) => {
-  ElMessage.info(`开始随访患者：${row.patientName}`)
-}
-
-// 查看患者
-const handleViewPatient = (row) => {
-  ElMessage.info(`查看患者详情：${row.patientName}`)
-}
-
-// 查看详情
-const handleViewDetail = (row) => {
-  ElMessage.info(`查看患者详情：${row.realName}`)
-}
-
-// 添加记录
-const handleAddRecord = (row) => {
-  ElMessage.info(`为患者添加随访记录：${row.realName}`)
-}
-
-// 加载数据
-const loadData = async () => {
+// 加载医生信息
+const loadDoctorInfo = async () => {
   try {
-    // 从本地存储获取用户基础信息
-    const userInfoStr = localStorage.getItem('userInfo')
-    if (userInfoStr) {
-      Object.assign(userInfo, JSON.parse(userInfoStr))
+    console.log('=== 开始加载医生信息 ===')
+
+    // 从 sessionStorage 获取用户信息
+    const userStr = sessionStorage.getItem('userInfo')
+    console.log('1. sessionStorage 中的 userInfo:', userStr)
+
+    // 如果 sessionStorage 中没有，再尝试 localStorage
+    if (!userStr || userStr === 'undefined' || userStr === 'null') {
+      const localUserStr = localStorage.getItem('userInfo')
+      console.log('2. localStorage 中的 userInfo:', localUserStr)
+
+      if (localUserStr && localUserStr !== 'undefined' && localUserStr !== 'null') {
+        const localUser = JSON.parse(localUserStr)
+        console.log('3. 从 localStorage 获取到用户:', localUser)
+        await processUserInfo(localUser)
+        return
+      }
+
+      console.error('4. sessionStorage 和 localStorage 中都没有有效的 userInfo')
+      ElMessage.warning('未找到用户信息，请重新登录')
+
+      // 3 秒后跳转到登录页
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
+      return
     }
 
-    // 并行加载所有数据
-    const [doctorRes, statsRes, pendingRes, patientsRes] = await Promise.all([
-      request.get('/doctor/info'),
-      request.get('/doctor/stats'),
-      request.get('/doctor/followup/pending'),
-      request.get('/doctor/patients')
-    ])
+    const user = JSON.parse(userStr)
+    console.log('5. 解析后的用户对象:', user)
+    await processUserInfo(user)
 
-    if (doctorRes.code === 200) {
-      Object.assign(doctorInfo, doctorRes.data)
-    }
-    if (statsRes.code === 200) {
-      Object.assign(stats, statsRes.data)
-    }
-    if (pendingRes.code === 200) {
-      pendingFollowups.value = pendingRes.data || []
-    }
-    if (patientsRes.code === 200) {
-      myPatients.value = patientsRes.data || []
-    }
-  } catch (err) {
-    console.error('加载数据失败：', err)
-    ElMessage.error('加载数据失败')
+  } catch (error) {
+    console.error('加载医生信息失败', error)
+    ElMessage.error('加载失败：' + (error.message || '未知错误'))
   }
 }
 
+// 处理用户信息
+const processUserInfo = async (user) => {
+  try {
+    // 检查用户角色是否为医生（role=2 或 userType=2）
+    const userRole = user.userType || user.role
+    console.log('6. 用户角色:', userRole)
+
+    if (userRole !== 2) {
+      ElMessage.error('当前用户不是医生账户，当前角色：' + userRole)
+      return
+    }
+
+    // 获取 doctorId
+    const doctorId = user.doctorId || user.id
+    console.log('7. 使用 doctorId:', doctorId)
+
+    if (!doctorId) {
+      console.error('无法获取 doctorId')
+      ElMessage.warning('未找到医生档案信息')
+      return
+    }
+
+    console.log('8. 调用接口：/doctor/dashboard/' + doctorId)
+
+    // 查询医生详细信息
+    const res = await request.get(`/doctor/dashboard/${doctorId}`)
+    console.log('9. 后端返回的数据:', res)
+
+    if (res.code === 200 && res.data) {
+      const doctor = res.data
+      console.log('10. 医生详细信息:', doctor)
+
+      doctorInfo.id = doctor.doctorId
+      doctorInfo.realName = doctor.realName || ''
+      doctorInfo.department = doctor.department || ''
+      doctorInfo.skill = doctor.skill || ''
+      doctorInfo.community = doctor.community || ''
+      doctorInfo.phone = doctor.phone || ''
+      doctorInfo.status = doctor.status
+
+      console.log('11. 最终显示的 doctorInfo:', doctorInfo)
+      ElMessage.success('医生工作台加载成功')
+
+      // 加载统计数据
+      await loadStats()
+    } else {
+      console.error('获取医生信息失败:', res.msg || res.message)
+      ElMessage.warning('获取医生信息失败：' + (res.msg || res.message))
+    }
+  } catch (error) {
+    console.error('处理用户信息失败', error)
+    ElMessage.error('处理失败：' + error.message)
+  }
+}
+
+// 加载统计数据
+const loadStats = async () => {
+  try {
+    // TODO: 后续需要从后端接口获取真实的统计数据
+    // 这里先使用模拟数据
+    stats.appointCount = Math.floor(Math.random() * 20)
+    stats.planCount = Math.floor(Math.random() * 50)
+    stats.recordCount = Math.floor(Math.random() * 100)
+
+    console.log('统计数据:', stats)
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
+
+// 处理预约
+const handleAppoint = () => {
+  router.push('/followup/appoint')
+}
+
+// 查看计划
+const handlePlan = () => {
+  router.push('/followup/plan')
+}
+
+// 查看记录
+const handleRecord = () => {
+  router.push('/followup/record')
+}
+
+// 跳转到患者管理
+const goToPatientManage = () => {
+  router.push('/patient/manage')
+}
+
+// 跳转到随访预约
+const goToFollowupAppoint = () => {
+  router.push('/followup/appoint')
+}
+
+// 跳转到随访计划
+const goToFollowupPlan = () => {
+  router.push('/followup/plan')
+}
+
+// 跳转到随访记录
+const goToFollowupRecord = () => {
+  router.push('/followup/record')
+}
+
 onMounted(() => {
-  loadData()
+  loadDoctorInfo()
 })
 </script>
 
 <style scoped>
 .doctor-dashboard {
   padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .header {
@@ -246,51 +253,74 @@ onMounted(() => {
 
 .header h1 {
   margin: 0 0 8px 0;
-  color: #1a1a1a;
+  font-size: 28px;
+  color: #303133;
 }
 
 .welcome {
   margin: 0;
-  color: #666;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  display: flex;
-  align-items: center;
-  padding: 24px;
-}
-
-.stat-icon {
-  font-size: 40px;
-  margin-right: 20px;
-}
-
-.stat-content h3 {
-  margin: 0 0 4px 0;
-  color: #1a1a1a;
-  font-size: 28px;
-}
-
-.stat-content p {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
+  font-size: 16px;
+  color: #909399;
 }
 
 .info-card {
   margin-bottom: 24px;
 }
 
-.card-header {
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  padding: 20px;
+  transition: transform 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-icon {
+  font-size: 48px;
+  margin-right: 20px;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+  color: #409EFF;
+}
+
+.stat-content p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #909399;
+}
+
+.quick-actions {
+  background: #f5f7fa;
+  padding: 24px;
+  border-radius: 8px;
+}
+
+.quick-actions h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 </style>

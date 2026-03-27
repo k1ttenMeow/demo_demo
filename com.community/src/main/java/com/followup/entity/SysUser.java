@@ -63,6 +63,36 @@ public class SysUser implements Serializable {
     private String community;
 
     /**
+     * 慢病类型（仅患者使用，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String chronicType;
+
+    /**
+     * 年龄（仅患者使用，非数据库字段）
+     */
+    @TableField(exist = false)
+    private Integer age;
+
+    /**
+     * 地址（仅患者使用，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String address;
+
+    /**
+     * 紧急联系人（仅患者使用，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String emergencyContact;
+
+    /**
+     * 紧急联系电话（仅患者使用，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String emergencyPhone;
+
+    /**
      * 用户类型（1-管理员 2-医生 3-患者）
      */
     @TableField("role")
@@ -72,6 +102,12 @@ public class SysUser implements Serializable {
      * 账号状态（0-禁用 1-启用）
      */
     private Integer status;
+
+    /**
+     * 逻辑删除（0-未删除 1-已删除）
+     */
+    private Integer isDeleted;
+
 
     /**
      * 创建时间
