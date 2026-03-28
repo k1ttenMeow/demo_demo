@@ -63,58 +63,58 @@
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="600px"
-      :close-on-click-modal="false"
-      @close="resetForm"
+        v-model="dialogVisible"
+        :title="dialogTitle"
+        width="600px"
+        :close-on-click-modal="false"
+        @close="resetForm"
     >
       <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="100px"
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-width="100px"
       >
         <el-form-item label="患者" prop="patientId">
-          <el-select v-model="form.patientId" placeholder="请选择患者" style="width: 100%">
+          <el-select v-model="form.patientId" placeholder="请选择患者" style="width: 100%" filterable>
             <el-option
-              v-for="item in patientList"
-              :key="item.id"
-              :label="item.realName"
-              :value="item.id"
+                v-for="item in patientList"
+                :key="item.id"
+                :label="item.realName"
+                :value="item.id"
             />
           </el-select>
         </el-form-item>
         <el-form-item label="医生" prop="doctorId">
-          <el-select v-model="form.doctorId" placeholder="请选择医生" style="width: 100%">
+          <el-select v-model="form.doctorId" placeholder="请选择医生" style="width: 100%" filterable>
             <el-option
-              v-for="item in doctorList"
-              :key="item.id"
-              :label="item.realName"
-              :value="item.id"
+                v-for="item in doctorList"
+                :key="item.id"
+                :label="item.realName"
+                :value="item.id"
             />
           </el-select>
         </el-form-item>
         <el-form-item label="预约时间" prop="appointTime">
           <el-date-picker
-            v-model="form.appointTime"
-            type="date"
-            placeholder="选择预约时间"
-            style="width: 100%"
-            value-format="YYYY-MM-DD"
+              v-model="form.appointTime"
+              type="date"
+              placeholder="选择预约时间"
+              style="width: 100%"
+              value-format="YYYY-MM-DD"
           />
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -214,11 +214,12 @@ const loadData = async () => {
     if (res.code === 200) {
       tableData.value = res.data.records || []
       total.value = res.data.total || 0
-      
-      // 处理数据，添加患者和医生姓名
-      await enrichAppointData()
+
+      // 处理数据，添加患者和医生姓名（后端已返回，只需处理空值）
+      enrichAppointData()
     }
   } catch (error) {
+    console.error('加载数据失败:', error)
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
@@ -226,16 +227,20 @@ const loadData = async () => {
 }
 
 // 丰富预约数据（添加姓名）
-const enrichAppointData = async () => {
-  // TODO: 需要调用患者和医生列表接口获取姓名
-  // 这里暂时使用模拟数据
+const enrichAppointData = () => {
+  // 后端已经返回了 patientName 和 doctorName，无需额外查询
+  // 只需要处理可能的空值
   tableData.value.forEach(item => {
-    if (!item.patientName) item.patientName = '患者' + item.patientId
-    if (!item.doctorName) item.doctorName = '医生' + item.doctorId
+    if (!item.patientName) {
+      item.patientName = '未知患者'
+    }
+    if (!item.doctorName) {
+      item.doctorName = '未知医生'
+    }
   })
 }
 
-// 加载患者列表
+// 加载患者列表（用于下拉框）
 const loadPatientList = async () => {
   try {
     const res = await request.get('/patient/list', { params: { page: 1, size: 100 } })
@@ -247,7 +252,7 @@ const loadPatientList = async () => {
   }
 }
 
-// 加载医生列表
+// 加载医生列表（用于下拉框）
 const loadDoctorList = async () => {
   try {
     const res = await request.get('/doctor/list', { params: { page: 1, size: 100 } })
@@ -280,7 +285,7 @@ const handleAdd = () => {
   loadDoctorList()
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑预约'
   form.id = row.id
   form.patientId = row.patientId
@@ -289,24 +294,24 @@ const handleEdit = (row) => {
   form.status = row.status
   form.remark = row.remark || ''
   dialogVisible.value = true
-  
+
   // 加载下拉框数据
-  loadPatientList()
-  loadDoctorList()
+  await loadPatientList()
+  await loadDoctorList()
 }
 
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除这条预约记录吗？`,
-      '删除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+        `确定要删除这条预约记录吗？`,
+        '删除确认',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
     )
-    
+
     const res = await request.delete(`/followup/appoint/${row.id}`)
     if (res.code === 200) {
       ElMessage.success('删除成功')
@@ -323,7 +328,7 @@ const handleDelete = async (row) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
+
   await formRef.value.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
@@ -336,7 +341,7 @@ const handleSubmit = async () => {
           // 新增
           res = await request.post('/followup/appoint', form)
         }
-        
+
         if (res.code === 200) {
           ElMessage.success(form.id ? '更新成功' : '新增成功')
           dialogVisible.value = false

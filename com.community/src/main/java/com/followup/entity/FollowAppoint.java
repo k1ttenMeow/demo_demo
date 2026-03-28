@@ -52,6 +52,18 @@ public class FollowAppoint implements Serializable {
     private String remark;
 
     /**
+     * 患者姓名（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String patientName;
+
+    /**
+     * 医生姓名（关联查询字段，非数据库字段）
+     */
+    @TableField(exist = false)
+    private String doctorName;
+
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
