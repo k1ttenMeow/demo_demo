@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.followup.entity.Doctor;
 import com.followup.vo.DoctorDashboardVO;
 
+import java.util.Map;
+
 /**
  * 医生表 业务接口
  *
@@ -51,4 +53,20 @@ public interface DoctorService extends IService<Doctor> {
      * @return 是否成功
      */
     boolean deleteDoctor(Long id);
+
+    /**
+     * 获取统计数据
+     * @param doctorId 医生 ID
+     * @return 统计数据
+     */
+    Map<String, Object> getStats(Long doctorId);
+
+    /**
+     * 获取患者列表
+     * @param doctorId 医生 ID
+     * @param page 页码
+     * @param size 每页大小
+     * @return 患者列表分页结果
+     */
+    Page<Map<String, Object>> getPatientList(Long doctorId, Integer page, Integer size);
 }

@@ -94,8 +94,9 @@ public class SysUser implements Serializable {
 
     /**
      * 用户类型（1-管理员 2-医生 3-患者）
+     * 注意：数据库字段名为 role
      */
-    @TableField("role")
+    @TableField(value = "role", exist = true)
     private Integer userType;
 
     /**

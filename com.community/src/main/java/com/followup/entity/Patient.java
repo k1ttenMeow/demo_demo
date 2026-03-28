@@ -31,6 +31,11 @@ public class Patient implements Serializable {
     private Long userId;
 
     /**
+     * 性别（0-未知 1-男 2-女）
+     */
+    private Integer gender;
+
+    /**
      * 责任医生 ID
      */
     private Long doctorId;

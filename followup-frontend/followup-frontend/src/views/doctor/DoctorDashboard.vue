@@ -13,7 +13,7 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item label="姓名">{{ doctorInfo.realName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="科室">{{ doctorInfo.department || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="技能">{{ doctorInfo.skill || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="主治">{{ doctorInfo.skill || '-' }}</el-descriptions-item>
         <el-descriptions-item label="所属社区">{{ doctorInfo.community || '-' }}</el-descriptions-item>
         <el-descriptions-item label="手机号">{{ doctorInfo.phone || '-' }}</el-descriptions-item>
         <el-descriptions-item label="状态">

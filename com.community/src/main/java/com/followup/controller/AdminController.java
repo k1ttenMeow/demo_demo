@@ -3,6 +3,7 @@ package com.followup.controller;
 import com.followup.common.R;
 import com.followup.entity.SysUser;
 import com.followup.service.AdminService;
+import com.followup.vo.SysUserVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin")
@@ -46,7 +48,7 @@ public class AdminController {
 
     // 新增：分页查询用户列表
     @GetMapping("/user/list")
-    public R<Page<SysUser>> getUserList(
+    public R<Page<SysUserVO>> getUserList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) String username,
@@ -56,7 +58,15 @@ public class AdminController {
     ) {
         try {
             Page<SysUser> userPage = adminService.getUserList(page, size, username, realName, userType, phone);
-            return R.success(userPage);
+
+            // 转换为 VO 对象，确保 role 字段正确映射
+            Page<SysUserVO> voPage = new Page<>(page, size);
+            voPage.setTotal(userPage.getTotal());
+            voPage.setRecords(userPage.getRecords().stream()
+                    .map(this::convertToVO)
+                    .collect(Collectors.toList()));
+
+            return R.success(voPage);
         } catch (Exception e) {
             log.error("查询用户列表异常", e);
             return R.error("查询失败");
@@ -65,14 +75,16 @@ public class AdminController {
 
     // 最近用户接口：异常时返回标准错误 JSON
     @GetMapping("/recentUser")
-    public R<List<SysUser>> getRecentUser() {
+    public R<List<SysUserVO>> getRecentUser() {
         try {
             List<SysUser> users = adminService.getRecentUser();
-            // 终极兜底：确保永远返回非 null 的 List
-            if (users == null) {
-                users = new ArrayList<>();
-            }
-            return R.success(users);
+
+            // 转换为 VO 对象，确保 role 字段正确映射
+            List<SysUserVO> voList = users.stream()
+                    .map(this::convertToVO)
+                    .collect(Collectors.toList());
+
+            return R.success(voList);
         } catch (Exception e) {
             log.error("获取最近用户失败", e);
             return R.error("获取最近用户失败");
@@ -110,5 +122,22 @@ public class AdminController {
             log.error("修改用户异常", e);
             return R.error("修改失败");
         }
+    }
+
+    /**
+     * 将 SysUser 实体转换为 SysUserVO
+     * 确保 role 字段正确映射
+     */
+    private SysUserVO convertToVO(SysUser user) {
+        SysUserVO vo = new SysUserVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setRealName(user.getRealName());
+        vo.setPhone(user.getPhone());
+        vo.setRole(user.getUserType()); // 将 userType 映射为 role
+        vo.setStatus(user.getStatus());
+        vo.setCreateTime(user.getCreateTime());
+        vo.setUpdateTime(user.getUpdateTime());
+        return vo;
     }
 }

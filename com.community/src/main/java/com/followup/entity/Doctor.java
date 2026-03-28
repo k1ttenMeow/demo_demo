@@ -30,6 +30,11 @@ public class Doctor implements Serializable {
     private Long userId;
 
     /**
+     * 性别（0-未知 1-男 2-女）
+     */
+    private Integer gender;
+
+    /**
      * 所属科室
      */
     private String department;
@@ -43,6 +48,16 @@ public class Doctor implements Serializable {
      * 所属社区
      */
     private String community;
+
+    /**
+     * 职称（如：主治医师、副主任医师、主任医师）
+     */
+    private String title;
+
+    /**
+     * 是否在线（0-离线 1-在线）
+     */
+    private Integer isOnline;
 
     /**
      * 医生姓名（关联查询字段，非数据库字段）

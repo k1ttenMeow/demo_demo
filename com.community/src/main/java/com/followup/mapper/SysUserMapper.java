@@ -16,6 +16,6 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     @Select("SELECT COUNT(*) FROM user WHERE role = 3")
     Integer patientCount();
 
-    @Select("SELECT * FROM user ORDER BY create_time DESC LIMIT 10")
+    @Select("SELECT id, username, password, real_name, phone, role, status, is_deleted, create_time, update_time FROM user ORDER BY create_time DESC LIMIT 10")
     List<SysUser> recentUser();
 }

@@ -2,7 +2,7 @@
   <div class="sysUser-dashboard">
     <div class="header">
       <h1>系统管理后台</h1>
-      <p class="welcome">欢迎回来，{{ userInfo.realName }}管理员！</p>
+      <p class="welcome">欢迎回来，{{ userInfo.realName || '管理员' }}！</p>
     </div>
 
     <!-- 系统概览统计 -->
@@ -78,19 +78,21 @@
         <el-table-column prop="username" label="登录账号" width="120" />
         <el-table-column prop="realName" label="真实姓名" width="100" />
         <el-table-column prop="phone" label="手机号" width="130" />
-        <el-table-column prop="userType" label="角色" width="100">
+        <el-table-column label="角色" width="100">
           <template #default="{ row }">
-            <el-tag :type="getRoleType(row.userType)">{{ getRoleText(row.userType) }}</el-tag>
+            <el-tag :type="getRoleType(getUserRoleType(row))">
+              {{ getRoleText(getUserRoleType(row)) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="注册时间" width="180">
+        <el-table-column label="注册时间" width="180">
           <template #default="{ row }">
             {{ formatDate(row.createTime) }}
           </template>
@@ -106,10 +108,10 @@
 
     <!-- 所有用户弹窗 -->
     <el-dialog
-      v-model="allUsersDialogVisible"
-      title="👥 用户管理"
-      width="90%"
-      :close-on-click-modal="false"
+        v-model="allUsersDialogVisible"
+        title="👥 用户管理"
+        width="90%"
+        :close-on-click-modal="false"
     >
       <!-- 搜索栏 -->
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -144,19 +146,21 @@
         <el-table-column prop="username" label="登录账号" width="120" />
         <el-table-column prop="realName" label="真实姓名" width="100" />
         <el-table-column prop="phone" label="手机号" width="130" />
-        <el-table-column prop="userType" label="角色" width="100">
+        <el-table-column label="角色" width="100">
           <template #default="{ row }">
-            <el-tag :type="getRoleType(row.userType)">{{ getRoleText(row.userType) }}</el-tag>
+            <el-tag :type="getRoleType(getUserRoleType(row))">
+              {{ getRoleText(getUserRoleType(row)) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="注册时间" width="180">
+        <el-table-column label="注册时间" width="180">
           <template #default="{ row }">
             {{ formatDate(row.createTime) }}
           </template>
@@ -172,30 +176,30 @@
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </el-dialog>
 
     <!-- 注册用户弹窗 -->
     <el-dialog
-      v-model="registerDialogVisible"
-      title="👤 注册用户"
-      width="600px"
-      :close-on-click-modal="false"
-      @close="resetForm"
+        v-model="registerDialogVisible"
+        title="👤 注册用户"
+        width="600px"
+        :close-on-click-modal="false"
+        @close="resetForm"
     >
       <el-form
-        ref="registerFormRef"
-        :model="registerForm"
-        :rules="registerRules"
-        label-width="120px"
+          ref="registerFormRef"
+          :model="registerForm"
+          :rules="registerRules"
+          label-width="120px"
       >
         <el-form-item label="登录账号" prop="username">
           <el-input v-model="registerForm.username" placeholder="请输入登录账号" />
@@ -216,7 +220,7 @@
             <el-option label="患者" :value="3" />
           </el-select>
         </el-form-item>
-        
+
         <!-- 医生专属字段 -->
         <template v-if="registerForm.userType === 2">
           <el-form-item label="所属科室" prop="department">
@@ -228,8 +232,23 @@
           <el-form-item label="所属社区" prop="community">
             <el-input v-model="registerForm.community" placeholder="例如：阳光社区、幸福社区等" />
           </el-form-item>
+          <el-form-item label="职称" prop="title">
+            <el-select v-model="registerForm.title" placeholder="请选择职称" style="width: 100%">
+              <el-option label="主治医师" value="主治医师" />
+              <el-option label="副主任医师" value="副主任医师" />
+              <el-option label="主任医师" value="主任医师" />
+              <el-option label="住院医师" value="住院医师" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="registerForm.gender">
+              <el-radio :label="0">未知</el-radio>
+              <el-radio :label="1">男</el-radio>
+              <el-radio :label="2">女</el-radio>
+            </el-radio-group>
+          </el-form-item>
         </template>
-        
+
         <!-- 患者专属字段 -->
         <template v-if="registerForm.userType === 3">
           <el-form-item label="慢病类型" prop="chronicType">
@@ -254,8 +273,15 @@
           <el-form-item label="紧急联系电话" prop="emergencyPhone">
             <el-input v-model="registerForm.emergencyPhone" placeholder="请输入紧急联系电话" />
           </el-form-item>
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="registerForm.gender">
+              <el-radio :label="0">未知</el-radio>
+              <el-radio :label="1">男</el-radio>
+              <el-radio :label="2">女</el-radio>
+            </el-radio-group>
+          </el-form-item>
         </template>
-        
+
         <el-form-item label="状态" prop="status">
           <el-switch v-model="registerForm.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="禁用" />
         </el-form-item>
@@ -265,6 +291,116 @@
           <el-button @click="registerDialogVisible = false">取消</el-button>
           <el-button type="primary" @click="handleRegister" :loading="registerLoading">
             确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑用户弹窗 -->
+    <el-dialog
+        v-model="editDialogVisible"
+        title="✏️ 编辑用户"
+        width="600px"
+        :close-on-click-modal="false"
+        @close="resetEditForm"
+    >
+      <el-form
+          ref="editFormRef"
+          :model="editForm"
+          :rules="editRules"
+          label-width="120px"
+      >
+        <el-form-item label="用户 ID" prop="id">
+          <el-input v-model="editForm.id" disabled />
+        </el-form-item>
+        <el-form-item label="登录账号" prop="username">
+          <el-input v-model="editForm.username" placeholder="请输入登录账号" />
+        </el-form-item>
+        <el-form-item label="真实姓名" prop="realName">
+          <el-input v-model="editForm.realName" placeholder="请输入真实姓名" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="editForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+
+        <!-- 编辑时不显示角色字段，保持原值 -->
+
+        <!-- 医生专属字段 -->
+        <template v-if="editForm.userType === 2">
+          <el-form-item label="所属科室" prop="department">
+            <el-input v-model="editForm.department" placeholder="例如：心血管内科、神经内科等" />
+          </el-form-item>
+          <el-form-item label="擅长技能" prop="skill">
+            <el-input v-model="editForm.skill" placeholder="例如：高血压、糖尿病等" />
+          </el-form-item>
+          <el-form-item label="所属社区" prop="community">
+            <el-input v-model="editForm.community" placeholder="例如：阳光社区、幸福社区等" />
+          </el-form-item>
+          <el-form-item label="职称" prop="title">
+            <el-select v-model="editForm.title" placeholder="请选择职称" style="width: 100%">
+              <el-option label="主治医师" value="主治医师" />
+              <el-option label="副主任医师" value="副主任医师" />
+              <el-option label="主任医师" value="主任医师" />
+              <el-option label="住院医师" value="住院医师" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="editForm.gender">
+              <el-radio :label="0">未知</el-radio>
+              <el-radio :label="1">男</el-radio>
+              <el-radio :label="2">女</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="在线状态" prop="isOnline">
+            <el-radio-group v-model="editForm.isOnline">
+              <el-radio :label="0">离线</el-radio>
+              <el-radio :label="1">在线</el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </template>
+
+        <!-- 患者专属字段 -->
+        <template v-if="editForm.userType === 3">
+          <el-form-item label="慢病类型" prop="chronicType">
+            <el-select v-model="editForm.chronicType" placeholder="请选择慢病类型" style="width: 100%">
+              <el-option label="高血压" value="高血压" />
+              <el-option label="糖尿病" value="糖尿病" />
+              <el-option label="冠心病" value="冠心病" />
+              <el-option label="脑卒中" value="脑卒中" />
+              <el-option label="慢阻肺" value="慢阻肺" />
+              <el-option label="其他" value="其他" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="年龄" prop="age">
+            <el-input-number v-model="editForm.age" :min="1" :max="150" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="地址" prop="address">
+            <el-input v-model="editForm.address" placeholder="请输入详细住址" />
+          </el-form-item>
+          <el-form-item label="紧急联系人" prop="emergencyContact">
+            <el-input v-model="editForm.emergencyContact" placeholder="请输入紧急联系人姓名" />
+          </el-form-item>
+          <el-form-item label="紧急联系电话" prop="emergencyPhone">
+            <el-input v-model="editForm.emergencyPhone" placeholder="请输入紧急联系电话" />
+          </el-form-item>
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="editForm.gender">
+              <el-radio :label="0">未知</el-radio>
+              <el-radio :label="1">男</el-radio>
+              <el-radio :label="2">女</el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </template>
+
+        <el-form-item label="状态" prop="status">
+          <el-switch v-model="editForm.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="禁用" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleEditSave" :loading="editLoading">
+            保存
           </el-button>
         </span>
       </template>
@@ -330,6 +466,8 @@ const registerForm = reactive({
   department: '',
   skill: '',
   community: '',
+  title: '',
+  gender: 0,
   // 患者专属字段
   chronicType: '',
   age: 0,
@@ -359,75 +497,191 @@ const registerRules = {
   ],
   department: [
     { required: true, message: '请输入所属科室', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 2 && !value) {
-        callback(new Error('医生必须填写科室'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 2 && !value) {
+          callback(new Error('医生必须填写科室'))
+        } else {
+          callback()
+        }
+      }}
   ],
   skill: [
     { required: true, message: '请输入擅长技能', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 2 && !value) {
-        callback(new Error('医生必须填写擅长技能'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 2 && !value) {
+          callback(new Error('医生必须填写擅长技能'))
+        } else {
+          callback()
+        }
+      }}
   ],
   community: [
     { required: true, message: '请输入所属社区', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 2 && !value) {
-        callback(new Error('医生必须填写所属社区'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 2 && !value) {
+          callback(new Error('医生必须填写所属社区'))
+        } else {
+          callback()
+        }
+      }}
   ],
   chronicType: [
     { required: true, message: '请输入慢病类型', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 3 && !value) {
-        callback(new Error('患者必须填写慢病类型'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写慢病类型'))
+        } else {
+          callback()
+        }
+      }}
   ],
   age: [
     { required: true, message: '请输入年龄', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 3 && (!value || value < 1 || value > 150)) {
-        callback(new Error('患者年龄必须在 1-150 之间'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 3 && (!value || value < 1 || value > 150)) {
+          callback(new Error('患者年龄必须在 1-150 之间'))
+        } else {
+          callback()
+        }
+      }}
   ],
   address: [
     { required: true, message: '请输入地址', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 3 && !value) {
-        callback(new Error('患者必须填写地址'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写地址'))
+        } else {
+          callback()
+        }
+      }}
   ],
   emergencyContact: [
     { required: true, message: '请输入紧急联系人', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 3 && !value) {
-        callback(new Error('患者必须填写紧急联系人'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写紧急联系人'))
+        } else {
+          callback()
+        }
+      }}
   ],
   emergencyPhone: [
     { required: true, message: '请输入紧急联系电话', trigger: 'blur', validator: (rule, value, callback) => {
-      if (registerForm.userType === 3 && !value) {
-        callback(new Error('患者必须填写紧急联系电话'))
-      } else {
-        callback()
-      }
-    }}
+        if (registerForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写紧急联系电话'))
+        } else {
+          callback()
+        }
+      }}
+  ]
+}
+
+// 编辑用户弹窗
+const editDialogVisible = ref(false)
+const editFormRef = ref(null)
+const editLoading = ref(false)
+
+const editForm = reactive({
+  id: null,
+  username: '',
+  realName: '',
+  phone: '',
+  userType: 2,
+  status: 1,
+  // 医生专属字段
+  department: '',
+  skill: '',
+  community: '',
+  title: '',
+  gender: 0,
+  isOnline: 0,
+  // 患者专属字段
+  chronicType: '',
+  age: 0,
+  address: '',
+  emergencyContact: '',
+  emergencyPhone: ''
+})
+
+const editRules = {
+  username: [
+    { required: true, message: '请输入登录账号', trigger: 'blur' },
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
+  ],
+  realName: [
+    { required: true, message: '请输入真实姓名', trigger: 'blur' }
+  ],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ],
+  userType: [
+    { required: true, message: '请选择角色', trigger: 'change' }
+  ],
+  department: [
+    { required: true, message: '请输入所属科室', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 2 && !value) {
+          callback(new Error('医生必须填写科室'))
+        } else {
+          callback()
+        }
+      }}
+  ],
+  skill: [
+    { required: true, message: '请输入擅长技能', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 2 && !value) {
+          callback(new Error('医生必须填写擅长技能'))
+        } else {
+          callback()
+        }
+      }}
+  ],
+  community: [
+    { required: true, message: '请输入所属社区', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 2 && !value) {
+          callback(new Error('医生必须填写所属社区'))
+        } else {
+          callback()
+        }
+      }}
+  ],
+  chronicType: [
+    { required: true, message: '请输入慢病类型', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写慢病类型'))
+        } else {
+          callback()
+        }
+      }}
+  ],
+  age: [
+    { required: true, message: '请输入年龄', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 3 && (!value || value < 1 || value > 150)) {
+          callback(new Error('患者年龄必须在 1-150 之间'))
+        } else {
+          callback()
+        }
+      }}
+  ],
+  address: [
+    { required: true, message: '请输入地址', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写地址'))
+        } else {
+          callback()
+        }
+      }}
+  ],
+  emergencyContact: [
+    { required: true, message: '请输入紧急联系人', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写紧急联系人'))
+        } else {
+          callback()
+        }
+      }}
+  ],
+  emergencyPhone: [
+    { required: true, message: '请输入紧急联系电话', trigger: 'blur', validator: (rule, value, callback) => {
+        if (editForm.userType === 3 && !value) {
+          callback(new Error('患者必须填写紧急联系电话'))
+        } else {
+          callback()
+        }
+      }}
   ]
 }
 
@@ -437,16 +691,54 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
+// 新增：根据用户名判断角色（兜底方案）
+const getUserRoleType = (row) => {
+  console.log('=== getUserRoleType 开始 ===')
+  console.log('输入 row:', JSON.stringify(row, null, 2))
+
+  // 首先尝试 role 字段
+  const role = row.role
+  console.log('role 字段值:', role)
+
+  // 如果 role 为 null，根据用户名判断
+  if (role === null || role === undefined) {
+    const username = row.username || ''
+    let guessedRole = null
+
+    if (username.includes('admin')) {
+      guessedRole = 1
+      console.log('根据用户名猜测是管理员')
+    } else if (username.includes('doctor')) {
+      guessedRole = 2
+      console.log('根据用户名猜测是医生')
+    } else if (username.includes('patient') || /^\d+$/.test(username)) {
+      guessedRole = 3
+      console.log('根据用户名猜测是患者')
+    }
+
+    console.log('猜测的角色:', guessedRole)
+    console.log('=== getUserRoleType 结束 ===')
+    return guessedRole !== null ? guessedRole : 3 // 默认返回患者
+  }
+
+  console.log('=== getUserRoleType 结束 ===')
+  return role
+}
+
 // 获取角色类型
-const getRoleType = (userType) => {
+const getRoleType = (role) => {
   const map = { 1: 'danger', 2: 'primary', 3: 'success' }
-  return map[userType] || 'info'
+  return map[role] || 'info'
 }
 
 // 获取角色文本
-const getRoleText = (userType) => {
-  const map = { 1: '管理员', 2: '医生', 3: '患者' }
-  return map[userType] || '未知'
+const getRoleText = (role) => {
+  const map = {
+    1: '管理员',
+    2: '医生',
+    3: '患者'
+  }
+  return map[role] || '未知'
 }
 
 // 路由跳转
@@ -454,22 +746,76 @@ const goTo = (path) => {
   router.push(path)
 }
 
-// 用户操作
-const handleEditUser = (row) => {
-  ElMessage.info(`编辑用户：${row.realName}`)
+// 处理编辑用户（打开弹窗并填充数据）
+const handleEditUser = async (row) => {
+  console.log('编辑用户:', row)
+
+  // 填充基本信息
+  editForm.id = row.id
+  editForm.username = row.username
+  editForm.realName = row.realName
+  editForm.phone = row.phone
+  editForm.userType = row.role || row.userType
+  editForm.status = row.status
+
+  // 根据角色查询详细信息
+  try {
+    if (editForm.userType === 2) {
+      // 医生 - 查询医生详细信息
+      const doctorRes = await request.get('/doctor/list', {
+        params: { page: 1, size: 10 }
+      })
+
+      if (doctorRes.code === 200 && doctorRes.data && doctorRes.data.records) {
+        const doctor = doctorRes.data.records.find(d => d.userId === row.id)
+        if (doctor) {
+          editForm.department = doctor.department || ''
+          editForm.skill = doctor.skill || ''
+          editForm.community = doctor.community || ''
+          editForm.title = doctor.title || ''
+          editForm.gender = doctor.gender || 0
+          editForm.isOnline = doctor.isOnline || 0
+        }
+      }
+    } else if (editForm.userType === 3) {
+      // 患者 - 查询患者详细信息
+      const patientRes = await request.get('/patient/list', {
+        params: { page: 1, size: 10 }
+      })
+
+      if (patientRes.code === 200 && patientRes.data && patientRes.data.records) {
+        const patient = patientRes.data.records.find(p => p.userId === row.id)
+        if (patient) {
+          editForm.chronicType = patient.chronicType || ''
+          editForm.age = patient.age || 0
+          editForm.address = patient.address || ''
+          editForm.emergencyContact = patient.emergencyContact || ''
+          editForm.emergencyPhone = patient.emergencyPhone || ''
+          editForm.gender = patient.gender || 0
+        }
+      }
+    }
+
+    // 打开编辑弹窗
+    editDialogVisible.value = true
+  } catch (error) {
+    console.error('查询用户详细信息失败:', error)
+    ElMessage.error('加载用户详细信息失败')
+  }
 }
+
 const handleDeleteUser = async (row) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除用户「${row.realName}」吗？`,
-      '删除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+        `确定要删除用户「${row.realName}」吗？`,
+        '删除确认',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
     )
-    
+
     // 调用后端删除接口
     const res = await request.delete(`/admin/user/${row.id}`)
     if (res.code === 200) {
@@ -507,6 +853,8 @@ const resetForm = () => {
   registerForm.department = ''
   registerForm.skill = ''
   registerForm.community = ''
+  registerForm.title = ''
+  registerForm.gender = 0
   registerForm.chronicType = ''
   registerForm.age = 0
   registerForm.address = ''
@@ -514,28 +862,140 @@ const resetForm = () => {
   registerForm.emergencyPhone = ''
 }
 
-// 处理注册
+// 重置编辑表单
+const resetEditForm = () => {
+  if (editFormRef.value) {
+    editFormRef.value.resetFields()
+  }
+  editForm.id = null
+  editForm.username = ''
+  editForm.realName = ''
+  editForm.phone = ''
+  editForm.userType = 2
+  editForm.status = 1
+  editForm.department = ''
+  editForm.skill = ''
+  editForm.community = ''
+  editForm.title = ''
+  editForm.gender = 0
+  editForm.isOnline = 0
+  editForm.chronicType = ''
+  editForm.age = 0
+  editForm.address = ''
+  editForm.emergencyContact = ''
+  editForm.emergencyPhone = ''
+}
+
+// 处理注册（完善版：同时插入 user 和 doctor/patient 表）
 const handleRegister = async () => {
   if (!registerFormRef.value) return
-  
+
   await registerFormRef.value.validate(async (valid) => {
     if (valid) {
       registerLoading.value = true
       try {
-        const res = await request.post('/admin/user', registerForm)
-        if (res.code === 200) {
-          ElMessage.success('注册成功')
-          registerDialogVisible.value = false
-          resetForm()
-          loadData() // 刷新列表
-          loadAllUsers() // 刷新全部用户列表
-        } else {
-          ElMessage.error(res.msg || '注册失败')
+        // 构建用户数据
+        const userData = {
+          username: registerForm.username,
+          password: registerForm.password,
+          realName: registerForm.realName,
+          phone: registerForm.phone,
+          userType: registerForm.userType,
+          status: registerForm.status
         }
+
+        // 先创建用户
+        const userRes = await request.post('/admin/user', userData)
+        if (userRes.code !== 200) {
+          ElMessage.error(userRes.msg || '注册失败')
+          return
+        }
+
+        const userId = userRes.data.id
+
+        // 根据角色创建对应的详细信息
+        if (registerForm.userType === 2) {
+          // 创建医生信息
+          const doctorData = {
+            userId: userId,
+            realName: registerForm.realName,
+            department: registerForm.department,
+            skill: registerForm.skill,
+            community: registerForm.community,
+            title: registerForm.title,
+            gender: registerForm.gender
+          }
+
+          const doctorRes = await request.post('/doctor', doctorData)
+          if (doctorRes.code !== 200) {
+            ElMessage.warning('用户创建成功，但医生信息创建失败')
+          }
+        } else if (registerForm.userType === 3) {
+          // 创建患者信息
+          const patientData = {
+            userId: userId,
+            chronicType: registerForm.chronicType,
+            age: registerForm.age,
+            address: registerForm.address,
+            emergencyContact: registerForm.emergencyContact,
+            emergencyPhone: registerForm.emergencyPhone,
+            gender: registerForm.gender
+          }
+
+          const patientRes = await request.post('/patient', patientData)
+          if (patientRes.code !== 200) {
+            ElMessage.warning('用户创建成功，但患者信息创建失败')
+          }
+        }
+
+        ElMessage.success('注册成功')
+        registerDialogVisible.value = false
+        resetForm()
+        loadData() // 刷新列表
+        loadAllUsers() // 刷新全部用户列表
       } catch (error) {
+        console.error('注册失败:', error)
         ElMessage.error('注册失败，请重试')
       } finally {
         registerLoading.value = false
+      }
+    }
+  })
+}
+
+// 处理编辑保存
+const handleEditSave = async () => {
+  if (!editFormRef.value) return
+
+  await editFormRef.value.validate(async (valid) => {
+    if (valid) {
+      editLoading.value = true
+      try {
+        // 构建更新数据
+        const updateData = {
+          id: editForm.id,
+          username: editForm.username,
+          realName: editForm.realName,
+          phone: editForm.phone,
+          userType: editForm.userType,
+          status: editForm.status
+        }
+
+        // 调用后端更新接口
+        const res = await request.put('/admin/user', updateData)
+        if (res.code === 200) {
+          ElMessage.success('更新成功')
+          editDialogVisible.value = false
+          resetEditForm()
+          loadData() // 刷新列表
+          loadAllUsers() // 刷新全部用户列表
+        } else {
+          ElMessage.error(res.msg || '更新失败')
+        }
+      } catch (error) {
+        ElMessage.error('更新失败，请重试')
+      } finally {
+        editLoading.value = false
       }
     }
   })
@@ -559,6 +1019,11 @@ const loadAllUsers = async () => {
     if (res.code === 200) {
       allUsers.value = res.data.records || []
       total.value = res.data.total || 0
+
+      console.log('====== 第一个用户完整数据 ======')
+      console.log(JSON.stringify(allUsers.value[0], null, 2))
+      console.log('==============================')
+      console.log('role 值:', allUsers.value[0]?.role)
     }
   } catch (error) {
     ElMessage.error('加载用户列表失败')
@@ -598,7 +1063,6 @@ const loadData = async () => {
     const statsRes = await request.get("/admin/stats");
     console.log("统计数据响应:", statsRes);
     if (statsRes.code === 200 && statsRes.data) {
-      // 正确映射后端返回的字段
       stats.totalUser = statsRes.data.totalUser || 0;
       stats.doctorCount = statsRes.data.doctorCount || 0;
       stats.patientCount = statsRes.data.patientCount || 0;
@@ -608,9 +1072,16 @@ const loadData = async () => {
 
     // 2. 请求最近用户数据
     const usersRes = await request.get("/admin/recentUser");
-    console.log("最近用户响应:", usersRes);
+    console.log("最近用户响应 data 属性:", usersRes.data);
+    console.log("最近用户响应完整 JSON:", JSON.stringify(usersRes, null, 2));
+
     if (usersRes.code === 200) {
       recentUsers.value = usersRes.data || [];
+
+      console.log('====== 第一个最近用户完整数据 ======')
+      console.log(JSON.stringify(recentUsers.value[0], null, 2))
+      console.log('====================================')
+      console.log('role 值:', recentUsers.value[0]?.role)
     } else {
       throw new Error(usersRes.msg || "获取最近用户失败");
     }
