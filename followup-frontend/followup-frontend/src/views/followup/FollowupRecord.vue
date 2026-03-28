@@ -25,13 +25,13 @@
         </el-form-item>
         <el-form-item label="随访时间">
           <el-date-picker
-            v-model="searchForm.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            style="width: 240px"
+              v-model="searchForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              style="width: 240px"
           />
         </el-form-item>
         <el-form-item>
@@ -65,54 +65,54 @@
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="700px"
-      :close-on-click-modal="false"
-      @close="resetForm"
+        v-model="dialogVisible"
+        :title="dialogTitle"
+        width="700px"
+        :close-on-click-modal="false"
+        @close="resetForm"
     >
       <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="120px"
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-width="120px"
       >
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="患者" prop="patientId">
-              <el-select v-model="form.patientId" placeholder="请选择患者" style="width: 100%">
-                <el-option
-                  v-for="item in patientList"
-                  :key="item.id"
-                  :label="item.realName"
-                  :value="item.id"
-                />
-              </el-select>
+              <el-autocomplete
+                  v-model="patientNameInput"
+                  :fetch-suggestions="searchPatient"
+                  placeholder="请输入患者姓名"
+                  style="width: 100%"
+                  clearable
+                  @select="handlePatientSelect"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="医生" prop="doctorId">
-              <el-select v-model="form.doctorId" placeholder="请选择医生" style="width: 100%">
-                <el-option
-                  v-for="item in doctorList"
-                  :key="item.id"
-                  :label="item.realName"
-                  :value="item.id"
-                />
-              </el-select>
+              <el-autocomplete
+                  v-model="doctorNameInput"
+                  :fetch-suggestions="searchDoctor"
+                  placeholder="请输入医生姓名"
+                  style="width: 100%"
+                  clearable
+                  @select="handleDoctorSelect"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -144,11 +144,11 @@
 
         <el-form-item label="随访时间" prop="followTime">
           <el-date-picker
-            v-model="form.followTime"
-            type="datetime"
-            placeholder="选择随访时间"
-            style="width: 100%"
-            value-format="YYYY-MM-DD HH:mm:ss"
+              v-model="form.followTime"
+              type="datetime"
+              placeholder="选择随访时间"
+              style="width: 100%"
+              value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
       </el-form>
@@ -203,8 +203,8 @@ const form = reactive({
   followTime: ''
 })
 
-const patientList = ref([])
-const doctorList = ref([])
+const patientNameInput = ref('')
+const doctorNameInput = ref('')
 
 const rules = {
   patientId: [
@@ -245,11 +245,12 @@ const loadData = async () => {
     if (res.code === 200) {
       tableData.value = res.data.records || []
       total.value = res.data.total || 0
-      
-      // 处理数据，添加患者和医生姓名
-      await enrichRecordData()
+
+      // 处理数据，添加患者和医生姓名（后端已返回，只需处理空值）
+      enrichRecordData()
     }
   } catch (error) {
+    console.error('加载数据失败:', error)
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
@@ -257,37 +258,87 @@ const loadData = async () => {
 }
 
 // 丰富记录数据（添加姓名）
-const enrichRecordData = async () => {
-  // TODO: 需要调用患者和医生列表接口获取姓名
-  // 这里暂时使用模拟数据
+const enrichRecordData = () => {
+  // 后端已经返回了 patientName 和 doctorName，无需额外查询
+  // 只需要处理可能的空值
   tableData.value.forEach(item => {
-    if (!item.patientName) item.patientName = '患者' + item.patientId
-    if (!item.doctorName) item.doctorName = '医生' + item.doctorId
+    if (!item.patientName) {
+      item.patientName = '未知患者'
+    }
+    if (!item.doctorName) {
+      item.doctorName = '未知医生'
+    }
   })
 }
 
-// 加载患者列表
-const loadPatientList = async () => {
+// 搜索患者（自动补全）
+const searchPatient = async (queryString, cb) => {
   try {
-    const res = await request.get('/patient/list', { params: { page: 1, size: 100 } })
+    const res = await request.get('/patient/list', {
+      params: { page: 1, size: 100 }
+    })
     if (res.code === 200) {
-      patientList.value = res.data.records || []
+      const patients = res.data.records || []
+      const results = queryString
+          ? patients.filter(p => p.realName && p.realName.includes(queryString))
+          : patients
+
+      // 转换为 el-autocomplete 需要的格式
+      const formattedResults = results.map(p => ({
+        value: p.realName,
+        id: p.id
+      }))
+
+      cb(formattedResults)
+    } else {
+      cb([])
     }
   } catch (error) {
-    console.error('加载患者列表失败', error)
+    console.error('搜索患者失败', error)
+    cb([])
   }
 }
 
-// 加载医生列表
-const loadDoctorList = async () => {
+// 搜索医生（自动补全）
+const searchDoctor = async (queryString, cb) => {
   try {
-    const res = await request.get('/doctor/list', { params: { page: 1, size: 100 } })
+    const res = await request.get('/doctor/list', { 
+      params: { page: 1, size: 100 } 
+    })
     if (res.code === 200) {
-      doctorList.value = res.data.records || []
+      const doctors = res.data.records || []
+      console.log('获取到的医生列表:', doctors) // 添加调试日志
+      const results = queryString
+        ? doctors.filter(d => d.realName && d.realName.includes(queryString))
+        : doctors
+      
+      // 转换为 el-autocomplete 需要的格式
+      const formattedResults = results.map(d => ({
+        value: d.realName,
+        id: d.id
+      }))
+      
+      console.log('格式化后的医生建议:', formattedResults) // 添加调试日志
+      cb(formattedResults)
+    } else {
+      cb([])
     }
   } catch (error) {
-    console.error('加载医生列表失败', error)
+    console.error('搜索医生失败', error)
+    cb([])
   }
+}
+
+// 患者选择处理
+const handlePatientSelect = (item) => {
+  form.patientId = item.id
+  patientNameInput.value = item.value
+}
+
+// 医生选择处理
+const handleDoctorSelect = (item) => {
+  form.doctorId = item.id
+  doctorNameInput.value = item.value
 }
 
 const handleSearch = () => {
@@ -308,12 +359,11 @@ const handleAdd = () => {
   dialogVisible.value = true
   // 设置默认随访时间为当前时间
   form.followTime = new Date().toISOString().slice(0, 19).replace('T', ' ')
-  // 加载下拉框数据
-  loadPatientList()
-  loadDoctorList()
+  patientNameInput.value = ''
+  doctorNameInput.value = ''
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑随访记录'
   form.id = row.id
   form.planId = row.planId
@@ -325,25 +375,26 @@ const handleEdit = (row) => {
   form.symptom = row.symptom || ''
   form.remark = row.remark || ''
   form.followTime = row.followTime
+
+  // 设置输入框的值
+  patientNameInput.value = row.patientName || ''
+  doctorNameInput.value = row.doctorName || ''
+
   dialogVisible.value = true
-  
-  // 加载下拉框数据
-  loadPatientList()
-  loadDoctorList()
 }
 
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除这条随访记录吗？`,
-      '删除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+        `确定要删除这条随访记录吗？`,
+        '删除确认',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
     )
-    
+
     const res = await request.delete(`/followup/record/${row.id}`)
     if (res.code === 200) {
       ElMessage.success('删除成功')
@@ -360,7 +411,7 @@ const handleDelete = async (row) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
+
   await formRef.value.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
@@ -373,7 +424,7 @@ const handleSubmit = async () => {
           // 新增
           res = await request.post('/followup/record', form)
         }
-        
+
         if (res.code === 200) {
           ElMessage.success(form.id ? '更新成功' : '新增成功')
           dialogVisible.value = false
@@ -404,6 +455,8 @@ const resetForm = () => {
   form.symptom = ''
   form.remark = ''
   form.followTime = ''
+  patientNameInput.value = ''
+  doctorNameInput.value = ''
 }
 
 const handleSizeChange = () => {

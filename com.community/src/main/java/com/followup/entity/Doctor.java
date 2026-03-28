@@ -78,6 +78,12 @@ public class Doctor implements Serializable {
     private String phone;
 
     /**
+     * 登录密码（非数据库字段，用于接收前端传递的密码）
+     */
+    @TableField(exist = false)
+    private String password;
+
+    /**
      * 状态（关联查询字段，非数据库字段）
      */
     @TableField(exist = false)

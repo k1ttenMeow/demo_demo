@@ -89,24 +89,24 @@
           label-width="100px"
       >
         <el-form-item label="患者" prop="patientId">
-          <el-select v-model="form.patientId" placeholder="请选择患者" style="width: 100%" filterable>
-            <el-option
-                v-for="item in patientList"
-                :key="item.id"
-                :label="item.realName"
-                :value="item.id"
-            />
-          </el-select>
+          <el-autocomplete
+              v-model="patientNameInput"
+              :fetch-suggestions="searchPatient"
+              placeholder="请输入患者姓名"
+              style="width: 100%"
+              clearable
+              @select="handlePatientSelect"
+          />
         </el-form-item>
         <el-form-item label="医生" prop="doctorId">
-          <el-select v-model="form.doctorId" placeholder="请选择医生" style="width: 100%" filterable>
-            <el-option
-                v-for="item in doctorList"
-                :key="item.id"
-                :label="item.realName"
-                :value="item.id"
-            />
-          </el-select>
+          <el-autocomplete
+              v-model="doctorNameInput"
+              :fetch-suggestions="searchDoctor"
+              placeholder="请输入医生姓名"
+              style="width: 100%"
+              clearable
+              @select="handleDoctorSelect"
+          />
         </el-form-item>
         <el-form-item label="预约时间" prop="appointTime">
           <el-date-picker
@@ -176,8 +176,8 @@ const form = reactive({
   remark: ''
 })
 
-const patientList = ref([])
-const doctorList = ref([])
+const patientNameInput = ref('')
+const doctorNameInput = ref('')
 
 const rules = {
   patientId: [
@@ -240,28 +240,72 @@ const enrichAppointData = () => {
   })
 }
 
-// 加载患者列表（用于下拉框）
-const loadPatientList = async () => {
+// 搜索患者（自动补全）
+const searchPatient = async (queryString, cb) => {
   try {
-    const res = await request.get('/patient/list', { params: { page: 1, size: 100 } })
+    const res = await request.get('/patient/list', {
+      params: { page: 1, size: 100 }
+    })
     if (res.code === 200) {
-      patientList.value = res.data.records || []
+      const patients = res.data.records || []
+      const results = queryString
+          ? patients.filter(p => p.realName && p.realName.includes(queryString))
+          : patients
+
+      // 转换为 el-autocomplete 需要的格式
+      const formattedResults = results.map(p => ({
+        value: p.realName,
+        id: p.id
+      }))
+
+      cb(formattedResults)
+    } else {
+      cb([])
     }
   } catch (error) {
-    console.error('加载患者列表失败', error)
+    console.error('搜索患者失败', error)
+    cb([])
   }
 }
 
-// 加载医生列表（用于下拉框）
-const loadDoctorList = async () => {
+// 搜索医生（自动补全）
+const searchDoctor = async (queryString, cb) => {
   try {
-    const res = await request.get('/doctor/list', { params: { page: 1, size: 100 } })
+    const res = await request.get('/doctor/list', {
+      params: { page: 1, size: 100 }
+    })
     if (res.code === 200) {
-      doctorList.value = res.data.records || []
+      const doctors = res.data.records || []
+      const results = queryString
+          ? doctors.filter(d => d.realName && d.realName.includes(queryString))
+          : doctors
+
+      // 转换为 el-autocomplete 需要的格式
+      const formattedResults = results.map(d => ({
+        value: d.realName,
+        id: d.id
+      }))
+
+      cb(formattedResults)
+    } else {
+      cb([])
     }
   } catch (error) {
-    console.error('加载医生列表失败', error)
+    console.error('搜索医生失败', error)
+    cb([])
   }
+}
+
+// 患者选择处理
+const handlePatientSelect = (item) => {
+  form.patientId = item.id
+  patientNameInput.value = item.value
+}
+
+// 医生选择处理
+const handleDoctorSelect = (item) => {
+  form.doctorId = item.id
+  doctorNameInput.value = item.value
 }
 
 const handleSearch = () => {
@@ -280,9 +324,8 @@ const resetSearch = () => {
 const handleAdd = () => {
   dialogTitle.value = '新增预约'
   dialogVisible.value = true
-  // 加载下拉框数据
-  loadPatientList()
-  loadDoctorList()
+  patientNameInput.value = ''
+  doctorNameInput.value = ''
 }
 
 const handleEdit = async (row) => {
@@ -293,11 +336,12 @@ const handleEdit = async (row) => {
   form.appointTime = row.appointTime
   form.status = row.status
   form.remark = row.remark || ''
-  dialogVisible.value = true
 
-  // 加载下拉框数据
-  await loadPatientList()
-  await loadDoctorList()
+  // 设置输入框的值
+  patientNameInput.value = row.patientName || ''
+  doctorNameInput.value = row.doctorName || ''
+
+  dialogVisible.value = true
 }
 
 const handleDelete = async (row) => {
@@ -368,6 +412,8 @@ const resetForm = () => {
   form.appointTime = ''
   form.status = '待确认'
   form.remark = ''
+  patientNameInput.value = ''
+  doctorNameInput.value = ''
 }
 
 const handleSizeChange = () => {

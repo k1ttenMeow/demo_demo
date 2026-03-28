@@ -168,14 +168,14 @@
         </el-row>
 
         <el-form-item label="责任医生" prop="doctorId">
-          <el-select v-model="form.doctorId" placeholder="请选择责任医生" style="width: 100%">
-            <el-option
-              v-for="item in doctorList"
-              :key="item.id"
-              :label="item.realName"
-              :value="item.id"
-            />
-          </el-select>
+          <el-autocomplete
+            v-model="doctorNameInput"
+            :fetch-suggestions="searchDoctor"
+            placeholder="请输入医生姓名"
+            style="width: 100%"
+            clearable
+            @select="handleDoctorSelect"
+          />
         </el-form-item>
 
         <el-form-item label="状态" prop="status">
@@ -234,10 +234,11 @@ const form = reactive({
   emergencyContact: '',
   emergencyPhone: '',
   doctorId: null,
+  gender: null,
   status: 1
 })
 
-const doctorList = ref([])
+const doctorNameInput = ref('')
 
 const rules = {
   username: [
@@ -291,16 +292,9 @@ const loadData = async () => {
       ...searchForm
     }
     const res = await request.get('/patient/list', { params })
-    console.log('后端返回的原始数据:', res)
     if (res.code === 200) {
       tableData.value = res.data.records || []
       total.value = res.data.total || 0
-      console.log('表格数据:', tableData.value)
-      if (tableData.value.length > 0) {
-        console.log('第一条记录的 realName:', tableData.value[0].realName)
-        console.log('第一条记录的 phone:', tableData.value[0].phone)
-        console.log('第一条记录的 doctorName:', tableData.value[0].doctorName)
-      }
     }
   } catch (error) {
     console.error('加载数据异常:', error)
@@ -310,16 +304,38 @@ const loadData = async () => {
   }
 }
 
-// 加载医生列表
-const loadDoctorList = async () => {
+// 搜索医生（自动补全）
+const searchDoctor = async (queryString, cb) => {
   try {
-    const res = await request.get('/doctor/list', { params: { page: 1, size: 100 } })
+    const res = await request.get('/doctor/list', { 
+      params: { page: 1, size: 100 } 
+    })
     if (res.code === 200) {
-      doctorList.value = res.data.records || []
+      const doctors = res.data.records || []
+      const results = queryString
+        ? doctors.filter(d => d.realName && d.realName.includes(queryString))
+        : doctors
+      
+      // 转换为 el-autocomplete 需要的格式
+      const formattedResults = results.map(d => ({
+        value: d.realName,
+        id: d.id
+      }))
+      
+      cb(formattedResults)
+    } else {
+      cb([])
     }
   } catch (error) {
-    console.error('加载医生列表失败', error)
+    console.error('搜索医生失败', error)
+    cb([])
   }
+}
+
+// 医生选择处理
+const handleDoctorSelect = (item) => {
+  form.doctorId = item.id
+  doctorNameInput.value = item.value
 }
 
 const handleSearch = () => {
@@ -339,8 +355,7 @@ const resetSearch = () => {
 const handleAdd = () => {
   dialogTitle.value = '新增患者'
   dialogVisible.value = true
-  // 加载下拉框数据
-  loadDoctorList()
+  doctorNameInput.value = ''
 }
 
 const handleEdit = (row) => {
@@ -357,11 +372,13 @@ const handleEdit = (row) => {
   form.emergencyContact = row.emergencyContact || ''
   form.emergencyPhone = row.emergencyPhone || ''
   form.doctorId = row.doctorId || null
+  form.gender = row.gender || null
   form.status = row.status !== undefined ? row.status : 1
-  dialogVisible.value = true
   
-  // 加载下拉框数据
-  loadDoctorList()
+  // 设置输入框的值
+  doctorNameInput.value = row.doctorName || ''
+  
+  dialogVisible.value = true
 }
 
 const handleDelete = async (row) => {
@@ -438,7 +455,9 @@ const resetForm = () => {
   form.emergencyContact = ''
   form.emergencyPhone = ''
   form.doctorId = null
+  form.gender = null
   form.status = 1
+  doctorNameInput.value = ''
 }
 
 const handleSizeChange = () => {

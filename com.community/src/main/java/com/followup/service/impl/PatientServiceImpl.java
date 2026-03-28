@@ -11,6 +11,7 @@ import com.followup.service.PatientService;
 import com.followup.mapper.SysUserMapper;
 import com.followup.mapper.DoctorMapper;
 import com.followup.vo.PatientDashboardVO;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -182,15 +183,78 @@ public class PatientServiceImpl extends ServiceImpl<PatientMapper, Patient> impl
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean createPatient(Patient patient) {
-        int result = patientMapper.insert(patient);
-        return result > 0;
+        System.out.println("=== 开始创建患者 ===");
+        System.out.println("username: " + patient.getUsername());
+        System.out.println("realName: " + patient.getRealName());
+        System.out.println("phone: " + patient.getPhone());
+        System.out.println("doctorId: " + patient.getDoctorId());
+
+        // 1. 创建用户信息（user 表）
+        SysUser user = new SysUser();
+        user.setUsername(patient.getUsername());
+        user.setPassword("{bcrypt}" + new BCryptPasswordEncoder().encode(patient.getPassword()));
+        user.setRealName(patient.getRealName());
+        user.setPhone(patient.getPhone());
+        user.setUserType(3); // 患者角色
+        user.setStatus(patient.getStatus() != null ? patient.getStatus() : 1);
+
+        int userResult = sysUserMapper.insert(user);
+        System.out.println("插入 user 表结果：" + userResult + ", userId: " + user.getId());
+
+        if (userResult > 0 && user.getId() != null) {
+            // 2. 创建患者信息（patient 表）
+            patient.setUserId(user.getId());
+
+            // 根据手机号自动设置性别（简单规则：奇数男，偶数女）
+            if (patient.getGender() == null && patient.getPhone() != null) {
+                String lastDigit = patient.getPhone().substring(patient.getPhone().length() - 1);
+                patient.setGender(Integer.parseInt(lastDigit) % 2 == 1 ? 1 : 2);
+            }
+
+            int patientResult = patientMapper.insert(patient);
+            System.out.println("插入 patient 表结果：" + patientResult);
+            return patientResult > 0;
+        }
+
+        return false;
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean updatePatient(Patient patient) {
-        int result = patientMapper.updateById(patient);
-        return result > 0;
+        System.out.println("=== 开始更新患者 ===");
+        System.out.println("userId: " + patient.getUserId());
+        System.out.println("doctorId: " + patient.getDoctorId());
+
+        // 1. 更新用户信息（user 表）
+        if (patient.getUserId() != null) {
+            SysUser user = sysUserMapper.selectById(patient.getUserId());
+            if (user != null) {
+                user.setRealName(patient.getRealName());
+                user.setPhone(patient.getPhone());
+                user.setStatus(patient.getStatus() != null ? patient.getStatus() : 1);
+
+                // 如果填写了密码则更新密码
+                if (StringUtils.hasText(patient.getPassword())) {
+                    user.setPassword("{bcrypt}" + new BCryptPasswordEncoder().encode(patient.getPassword()));
+                }
+
+                int userResult = sysUserMapper.updateById(user);
+                System.out.println("更新 user 表结果：" + userResult);
+            }
+        }
+
+        // 2. 更新患者信息（patient 表）
+        // 根据手机号自动设置性别
+        if (patient.getGender() == null && patient.getPhone() != null) {
+            String lastDigit = patient.getPhone().substring(patient.getPhone().length() - 1);
+            patient.setGender(Integer.parseInt(lastDigit) % 2 == 1 ? 1 : 2);
+        }
+
+        int patientResult = patientMapper.updateById(patient);
+        System.out.println("更新 patient 表结果：" + patientResult);
+
+        return patientResult > 0;
     }
 
     @Transactional(rollbackFor = Exception.class)
