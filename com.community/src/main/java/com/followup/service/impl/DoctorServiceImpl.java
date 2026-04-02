@@ -6,9 +6,15 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.followup.entity.Doctor;
 import com.followup.entity.SysUser;
 import com.followup.entity.Patient;
+import com.followup.entity.FollowAppoint;
+import com.followup.entity.FollowPlan;
+import com.followup.entity.FollowRecord;
 import com.followup.mapper.DoctorMapper;
 import com.followup.mapper.SysUserMapper;
 import com.followup.mapper.PatientMapper;
+import com.followup.mapper.FollowAppointMapper;
+import com.followup.mapper.FollowPlanMapper;
+import com.followup.mapper.FollowRecordMapper;
 import com.followup.service.DoctorService;
 import com.followup.vo.DoctorDashboardVO;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -34,6 +40,15 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
 
     @Resource
     private PatientMapper patientMapper;
+
+    @Resource
+    private FollowAppointMapper followAppointMapper;
+
+    @Resource
+    private FollowPlanMapper followPlanMapper;
+
+    @Resource
+    private FollowRecordMapper followRecordMapper;
 
     @Override
     public Page<Doctor> getDoctorList(Integer page, Integer size, String realName, String department, String community) {
@@ -158,11 +173,33 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
 
     @Override
     public DoctorDashboardVO getDashboardInfo(Long doctorId) {
-        // 查询医生基本信息
-        Doctor doctor = doctorMapper.selectById(doctorId);
-        if (doctor == null) {
+        System.out.println("=== 获取医生仪表板信息 ===");
+        System.out.println("传入的 doctorId: " + doctorId);
+
+        // ✅ 直接假设传入的 doctorId 是 user.id，从 user 表查询
+        SysUser user = sysUserMapper.selectById(doctorId);
+
+        if (user == null || user.getUserType() != 2) {
+            System.out.println("用户不存在或不是医生角色");
             return null;
         }
+
+        System.out.println("找到用户：" + user.getRealName() + ", user.id: " + user.getId());
+
+        // 通过 user_id 查找对应的 doctor 记录
+        List<Doctor> doctors = doctorMapper.selectList(
+                new LambdaQueryWrapper<Doctor>()
+                        .eq(Doctor::getUserId, doctorId)
+        );
+
+        if (doctors.isEmpty()) {
+            System.out.println("未找到对应的医生档案");
+            return null;
+        }
+
+        Doctor doctor = doctors.get(0);
+        System.out.println("找到医生档案，doctor.id: " + doctor.getId());
+        System.out.println("医生 user.id: " + doctor.getUserId());
 
         DoctorDashboardVO vo = new DoctorDashboardVO();
         vo.setDoctorId(doctor.getId());
@@ -174,13 +211,38 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
         vo.setGender(doctor.getGender());
         vo.setIsOnline(doctor.getIsOnline());
 
+        // 设置性别文本
+        if (doctor.getGender() == 1) {
+            vo.setGenderText("男");
+        } else if (doctor.getGender() == 2) {
+            vo.setGenderText("女");
+        } else {
+            vo.setGenderText("未知");
+        }
+
+        // 设置在线状态文本
+        if (doctor.getIsOnline() == 1) {
+            vo.setIsOnlineText("在线");
+        } else {
+            vo.setIsOnlineText("离线");
+        }
+
         // 查询用户信息（姓名、手机号、状态）
         if (doctor.getUserId() != null) {
-            SysUser user = sysUserMapper.selectById(doctor.getUserId());
-            if (user != null) {
-                vo.setRealName(user.getRealName());
-                vo.setPhone(user.getPhone());
-                vo.setStatus(user.getStatus());
+            SysUser userInfo = sysUserMapper.selectById(doctor.getUserId());
+            if (userInfo != null) {
+                vo.setRealName(userInfo.getRealName());
+                vo.setPhone(userInfo.getPhone());
+                vo.setStatus(userInfo.getStatus());
+
+                // 设置状态文本
+                if (userInfo.getStatus() == 1) {
+                    vo.setStatusText("正常");
+                } else if (userInfo.getStatus() == 0) {
+                    vo.setStatusText("禁用");
+                } else {
+                    vo.setStatusText("未知");
+                }
             }
         }
 
@@ -201,12 +263,74 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
         return stats;
     }
 
+    /**
+     * ✅ 保留原有方法（不做任何修改）
+     */
     @Override
     public Page<Map<String, Object>> getPatientList(Long doctorId, Integer page, Integer size) {
+        // 调用重载方法，不传搜索参数
+        return getPatientList(doctorId, page, size, null, null);
+    }
+
+    /**
+     * ✅ 新增重载方法（支持搜索）- 正确逻辑：patient.doctor_id 对应 doctor.id
+     */
+    @Override
+    public Page<Map<String, Object>> getPatientList(Long doctorId, Integer page, Integer size, String realName, String chronicType) {
+        System.out.println("=== 开始查询医生患者列表 ===");
+        System.out.println("doctorId (user.id): " + doctorId);
+
         Page<Patient> patientPage = new Page<>(page, size);
 
         LambdaQueryWrapper<Patient> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Patient::getDoctorId, doctorId);
+
+        // ✅ 先通过 user.id 找到 doctor.id，再查询 patient 表
+        // 因为 patient.doctor_id 对应的是 doctor 表的主键 id
+        List<Doctor> doctors = doctorMapper.selectList(
+                new LambdaQueryWrapper<Doctor>()
+                        .eq(Doctor::getUserId, doctorId)
+        );
+
+        if (doctors.isEmpty()) {
+            System.out.println("未找到医生档案");
+            Page<Map<String, Object>> emptyPage = new Page<>(page, size);
+            emptyPage.setTotal(0);
+            return emptyPage;
+        }
+
+        Doctor doctor = doctors.get(0);
+        Long actualDoctorId = doctor.getId(); // 这是 doctor 表的主键 id
+
+        System.out.println("医生档案：doctor.id=" + actualDoctorId + ", user.id=" + doctorId);
+
+        // 使用 doctor.id 查询患者（patient.doctor_id 对应 doctor.id）
+        wrapper.eq(Patient::getDoctorId, actualDoctorId);
+
+        // 动态添加查询条件
+        if (StringUtils.hasText(realName)) {
+            // 先查询患者用户 ID（从 user 表）
+            List<SysUser> users = sysUserMapper.selectList(
+                    new LambdaQueryWrapper<SysUser>()
+                            .like(StringUtils.hasText(realName), SysUser::getRealName, realName)
+                            .eq(SysUser::getUserType, 3) // 只查询患者角色
+            );
+            List<Long> userIds = users.stream()
+                    .map(SysUser::getId)
+                    .collect(Collectors.toList());
+
+            System.out.println("患者姓名：" + realName + ", 找到的患者用户 IDs: " + userIds);
+
+            if (!userIds.isEmpty()) {
+                wrapper.in(Patient::getUserId, userIds);
+            } else {
+                wrapper.eq(Patient::getUserId, -1); // 无匹配
+            }
+        }
+
+        if (StringUtils.hasText(chronicType)) {
+            wrapper.eq(Patient::getChronicType, chronicType);
+        }
+
         wrapper.orderByDesc(Patient::getCreateTime);
 
         Page<Patient> result = patientMapper.selectPage(patientPage, wrapper);
@@ -240,18 +364,29 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
                 patientMap.put("chronicType", patient.getChronicType());
                 patientMap.put("age", patient.getAge());
                 patientMap.put("address", patient.getAddress());
+                patientMap.put("gender", patient.getGender());
+                patientMap.put("emergencyContact", patient.getEmergencyContact());
+                patientMap.put("emergencyPhone", patient.getEmergencyPhone());
 
-                // 填充用户信息
+                // 填充用户信息（患者姓名、电话等）
                 SysUser user = userMap.get(patient.getUserId());
                 if (user != null) {
                     patientMap.put("realName", user.getRealName());
                     patientMap.put("phone", user.getPhone());
+                    patientMap.put("username", user.getUsername());
+                    patientMap.put("status", user.getStatus());
                 } else {
                     patientMap.put("realName", null);
                     patientMap.put("phone", null);
+                    patientMap.put("username", null);
+                    patientMap.put("status", null);
                 }
 
                 resultList.add(patientMap);
+
+                System.out.println("✅ 患者：" + (user != null ? user.getRealName() : "未知") +
+                        " | patient.doctor_id=" + patient.getDoctorId() +
+                        " (对应 doctor.id)");
             }
         }
 
@@ -260,6 +395,171 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
         resultPage.setRecords(resultList);
         resultPage.setTotal(result.getTotal());
 
+        System.out.println("查询到的患者数量：" + resultList.size());
+
         return resultPage;
+    }
+
+    @Override
+    public boolean updateOnlineStatus(Long doctorId, Integer isOnline) {
+        Doctor doctor = doctorMapper.selectById(doctorId);
+        if (doctor == null) {
+            throw new RuntimeException("医生不存在");
+        }
+
+        doctor.setIsOnline(isOnline);
+        int result = doctorMapper.updateById(doctor);
+        return result > 0;
+    }
+
+    @Override
+    public Page<Map<String, Object>> getMyAppointments(
+            Long doctorId,
+            Integer page,
+            Integer size,
+            String patientName,
+            String status,
+            String appointTime
+    ) {
+        System.out.println("=== 开始查询医生预约 ===");
+        System.out.println("doctorId (user.id): " + doctorId);
+        System.out.println("page: " + page + ", size: " + size);
+
+        // 直接查询预约列表
+        Page<FollowAppoint> followPage = new Page<>(page, size);
+
+        LambdaQueryWrapper<FollowAppoint> wrapper = new LambdaQueryWrapper<>();
+
+        // doctor_id 直接关联 user.id，所以这里直接使用
+        wrapper.eq(FollowAppoint::getDoctorId, doctorId);
+
+        // 动态添加查询条件
+        if (StringUtils.hasText(patientName)) {
+            // 先查询患者用户 ID（从 user 表）
+            List<SysUser> users = sysUserMapper.selectList(
+                    new LambdaQueryWrapper<SysUser>()
+                            .like(StringUtils.hasText(patientName), SysUser::getRealName, patientName)
+                            .eq(SysUser::getUserType, 3) // 只查询患者角色
+            );
+            List<Long> userIds = users.stream()
+                    .map(SysUser::getId)
+                    .collect(Collectors.toList());
+
+            System.out.println("患者姓名：" + patientName + ", 找到的患者用户 IDs: " + userIds);
+
+            if (!userIds.isEmpty()) {
+                wrapper.in(FollowAppoint::getPatientId, userIds);
+            } else {
+                wrapper.eq(FollowAppoint::getPatientId, -1); // 无匹配
+            }
+        }
+
+        if (StringUtils.hasText(status)) {
+            wrapper.eq(FollowAppoint::getStatus, status);
+        }
+
+        if (StringUtils.hasText(appointTime)) {
+            wrapper.eq(FollowAppoint::getAppointTime, appointTime);
+        }
+
+        // 按预约时间降序
+        wrapper.orderByDesc(FollowAppoint::getAppointTime);
+
+        long count = followAppointMapper.selectCount(wrapper);
+        System.out.println("符合条件的记录数：" + count);
+
+        Page<FollowAppoint> appointPage = followAppointMapper.selectPage(followPage, wrapper);
+
+        System.out.println("查询到的记录：" + appointPage.getRecords().size());
+
+        // 转换为 Map 格式并填充患者信息
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        List<FollowAppoint> appointments = appointPage.getRecords();
+
+        if (!appointments.isEmpty()) {
+            // 批量获取所有患者用户 ID（这些 ID 直接是 user.id）
+            List<Long> patientUserIds = appointments.stream()
+                    .map(FollowAppoint::getPatientId)
+                    .filter(id -> id != null)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            System.out.println("患者用户 ID 列表：" + patientUserIds);
+
+            // 直接从 user 表查询患者信息
+            Map<Long, SysUser> patientUserMap = new HashMap<>();
+            if (!patientUserIds.isEmpty()) {
+                List<SysUser> patients = sysUserMapper.selectBatchIds(patientUserIds);
+                for (SysUser patient : patients) {
+                    patientUserMap.put(patient.getId(), patient);
+                }
+            }
+
+            // 构建返回结果
+            for (FollowAppoint appoint : appointments) {
+                Map<String, Object> appointMap = new HashMap<>();
+                appointMap.put("id", appoint.getId());
+                appointMap.put("patientId", appoint.getPatientId());
+                appointMap.put("doctorId", appoint.getDoctorId());
+                appointMap.put("appointTime", appoint.getAppointTime());
+                appointMap.put("status", appoint.getStatus());
+                appointMap.put("remark", appoint.getRemark());
+
+                // 填充患者信息（直接从 user 表获取）
+                SysUser patientUser = patientUserMap.get(appoint.getPatientId());
+                if (patientUser != null) {
+                    appointMap.put("patientName", patientUser.getRealName());
+                    appointMap.put("patientPhone", patientUser.getPhone());
+                } else {
+                    appointMap.put("patientName", "未知患者");
+                    appointMap.put("patientPhone", "-");
+                }
+
+                System.out.println("预约 ID: " + appoint.getId() + ", 患者：" + appointMap.get("patientName"));
+
+                resultList.add(appointMap);
+            }
+        }
+
+        // 创建新的 Page 对象
+        Page<Map<String, Object>> resultPage = new Page<>(page, size);
+        resultPage.setRecords(resultList);
+        resultPage.setTotal(appointPage.getTotal());
+
+        System.out.println("返回结果总数：" + resultPage.getTotal());
+
+        return resultPage;
+    }
+
+    @Override
+    public Map<String, Object> getDoctorStats(Long doctorId) {
+        Map<String, Object> stats = new HashMap<>();
+
+        System.out.println("=== 获取医生统计数据 ===");
+        System.out.println("doctorId (user.id): " + doctorId);
+
+        // 1. 统计预约数量（排除已取消的）
+        LambdaQueryWrapper<FollowAppoint> appointWrapper = new LambdaQueryWrapper<>();
+        appointWrapper.eq(FollowAppoint::getDoctorId, doctorId);
+        appointWrapper.ne(FollowAppoint::getStatus, "已取消");
+        Long appointCount = followAppointMapper.selectCount(appointWrapper);
+        stats.put("appointCount", appointCount);
+        System.out.println("预约数量：" + appointCount);
+
+        // 2. 统计随访计划数量
+        LambdaQueryWrapper<FollowPlan> planWrapper = new LambdaQueryWrapper<>();
+        planWrapper.eq(FollowPlan::getDoctorId, doctorId);
+        Long planCount = followPlanMapper.selectCount(planWrapper);
+        stats.put("planCount", planCount);
+        System.out.println("随访计划数量：" + planCount);
+
+        // 3. 统计随访记录数量
+        LambdaQueryWrapper<FollowRecord> recordWrapper = new LambdaQueryWrapper<>();
+        recordWrapper.eq(FollowRecord::getDoctorId, doctorId);
+        Long recordCount = followRecordMapper.selectCount(recordWrapper);
+        stats.put("recordCount", recordCount);
+        System.out.println("随访记录数量：" + recordCount);
+
+        return stats;
     }
 }

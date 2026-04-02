@@ -17,7 +17,7 @@ public interface FollowPlanService extends IService<FollowPlan> {
      * @param status 状态（可选）
      * @return 分页结果
      */
-    Page<FollowPlan> getPlanList(Integer page, Integer size, String patientName, String doctorName, String planType, String status);
+    Page<FollowPlan> getPlanList(Integer page, Integer size, String patientName, String doctorName, String planType, String status,Long doctorId);
 
     /**
      * 创建随访计划
@@ -42,4 +42,9 @@ public interface FollowPlanService extends IService<FollowPlan> {
      * @return 是否成功
      */
     boolean deletePlan(Long id);
+
+    /**
+     * 修改随访计划状态
+     */
+    boolean updatePlanStatus(Long id, String status);
 }

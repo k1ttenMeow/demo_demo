@@ -4,7 +4,7 @@
       <div class="header-left">
         <el-button type="info" @click="goBack" style="margin-right: 16px;">
           <el-icon><ArrowLeft /></el-icon>
-          返回
+          返回主页
         </el-button>
         <h1>📄 随访计划管理</h1>
       </div>
@@ -216,14 +216,33 @@ const rules = {
   ]
 }
 
+// 当前登录用户信息
+const currentUser = reactive({
+  id: null,
+  userType: null,
+  realName: ''
+})
+
 const getStatusType = (status) => {
   const map = { '待执行': 'warning', '执行中': 'primary', '已完成': 'success' }
   return map[status] || 'info'
 }
 
-// 返回管理员首页
+// 返回主页（根据角色不同返回不同页面）
 const goBack = () => {
-  router.push('/admin/dashboard')
+  const userTypeStr = sessionStorage.getItem('userType')
+  const userType = Number(userTypeStr)
+  
+  if (userType === 2) {
+    // 医生返回医生工作台
+    router.push('/doctor/dashboard')
+  } else if (userType === 1) {
+    // 管理员返回管理员首页
+    router.push('/admin/dashboard')
+  } else {
+    // 其他返回首页
+    router.push('/')
+  }
 }
 
 // 计划类型变化时自动设置周期
@@ -250,6 +269,13 @@ const loadData = async () => {
       size: pageSize.value,
       ...searchForm
     }
+    
+    // ✅ 如果是医生，只查询自己的随访计划
+    if (currentUser.userType === 2 && currentUser.id) {
+      params.doctorId = currentUser.id
+      console.log('=== 医生查看自己的随访计划，doctorId:', currentUser.id)
+    }
+    
     const res = await request.get('/followup/plan/list', { params })
     if (res.code === 200) {
       tableData.value = res.data.records || []
@@ -295,7 +321,7 @@ const searchPatient = async (queryString, cb) => {
       // 转换为 el-autocomplete 需要的格式
       const formattedResults = results.map(p => ({
         value: p.realName,
-        id: p.id
+        id: p.userId  // ✅ 使用 userId（user.id）
       }))
 
       cb(formattedResults)
@@ -323,7 +349,7 @@ const searchDoctor = async (queryString, cb) => {
       // 转换为 el-autocomplete 需要的格式
       const formattedResults = results.map(d => ({
         value: d.realName,
-        id: d.id
+        id: d.userId  // ✅ 使用 userId（user.id）
       }))
 
       cb(formattedResults)
@@ -469,8 +495,36 @@ const handleCurrentChange = () => {
   loadData()
 }
 
-onMounted(() => {
-  loadData()
+onMounted(async () => {
+  // 获取当前登录用户信息
+  const userStr = sessionStorage.getItem('userInfo')
+  const userTypeStr = sessionStorage.getItem('userType')
+  
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr)
+      currentUser.id = user.doctorId || user.patientId || user.id
+      currentUser.userType = user.userType || user.role
+      currentUser.realName = user.realName
+      
+      console.log('=== 当前用户信息 ===', currentUser)
+      
+      // 如果是医生，自动填充医生字段为自己的信息
+      if (currentUser.userType === 2 && currentUser.id) {
+        form.doctorId = currentUser.id
+        doctorNameInput.value = currentUser.realName
+        console.log('=== 自动填充医生信息 ===', {
+          doctorId: currentUser.id,
+          doctorName: currentUser.realName
+        })
+      }
+    } catch (error) {
+      console.error('解析用户信息失败', error)
+    }
+  }
+  
+  // 加载数据
+  await loadData()
 })
 </script>
 

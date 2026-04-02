@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
-// 页面导入（保持你原来的路径）
+// 页面导入
 import Login from '../views/Login.vue'
 import PatientDashboard from '../views/patient/PatientDashboard.vue'
 import DoctorDashboard from '../views/doctor/DoctorDashboard.vue'
@@ -11,7 +11,10 @@ import FollowupPlan from '../views/followup/FollowupPlan.vue'
 import FollowupRecord from '../views/followup/FollowupRecord.vue'
 import PatientManage from '../views/patient/PatientManage.vue'
 import DoctorManage from '../views/doctor/DoctorManage.vue'
-
+import MyDoctorAppointments from '../views/doctor/MyDoctorAppointments.vue'
+import MyDoctorPlans from '../views/doctor/MyDoctorPlans.vue' 
+import MyDoctorRecords from '../views/doctor/MyDoctorRecords.vue'
+import MyPatients from '../views/doctor/MyPatients.vue' 
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -32,7 +35,7 @@ const routes = [
       }
     }
   },
-    // 新增随访管理路由
+  // 随访管理路由
   { 
     path: '/followup/appoint', 
     name: 'FollowupAppoint', 
@@ -52,7 +55,7 @@ const routes = [
     meta: { requiresAuth: true, role: 1 } 
   },
   
-  // 新增患者和医生管理路由
+  // 患者和医生管理路由
   { 
     path: '/patient/manage', 
     name: 'PatientManage', 
@@ -66,6 +69,38 @@ const routes = [
     meta: { requiresAuth: true, role: 1 } 
   },
   
+  // 医生预约管理路由
+  { 
+    path: '/doctor/my-appointments', 
+    name: 'MyDoctorAppointments', 
+    component: MyDoctorAppointments, 
+    meta: { requiresAuth: true, role: 2 } 
+  },
+  
+    // 医生随访计划路由
+  { 
+    path: '/doctor/my-plans', 
+    name: 'MyDoctorPlans', 
+    component: MyDoctorPlans, 
+    meta: { requiresAuth: true, role: 2 } 
+  },
+
+  // 医生随访记录路由
+  { 
+    path: '/doctor/my-records', 
+    name: 'MyDoctorRecords', 
+    component: MyDoctorRecords, 
+    meta: { requiresAuth: true, role: 2 } 
+  },
+
+  // 我的患者路由
+  { 
+    path: '/doctor/my-patients', 
+    name: 'MyPatients', 
+    component: MyPatients, 
+    meta: { requiresAuth: true, role: 2 } 
+  },
+
   { path: '/:pathMatch(.*)*', redirect: '/login' }
 ]
 
@@ -74,9 +109,8 @@ const router = createRouter({
   routes
 })
 
-// ✅ 修复后的路由守卫（解决无限重定向 + NaN 问题）
+// 路由守卫
 router.beforeEach((to, from, next) => {
-  // ============= 修复：换成 sessionStorage =============
   const token = sessionStorage.getItem('followup_token')
   const hasToken = !!token
   const userTypeStr = sessionStorage.getItem('userType') || '0'

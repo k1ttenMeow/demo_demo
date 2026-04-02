@@ -192,4 +192,40 @@ public class FollowAppointServiceImpl extends ServiceImpl<FollowAppointMapper, F
         int result = followAppointMapper.deleteById(id);
         return result > 0;
     }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean confirmAppoint(Long id) {
+        FollowAppoint appoint = followAppointMapper.selectById(id);
+        if (appoint == null) {
+            throw new RuntimeException("预约不存在");
+        }
+        appoint.setStatus("已确认");
+        int result = followAppointMapper.updateById(appoint);
+        return result > 0;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean completeAppoint(Long id) {
+        FollowAppoint appoint = followAppointMapper.selectById(id);
+        if (appoint == null) {
+            throw new RuntimeException("预约不存在");
+        }
+        appoint.setStatus("已完成");
+        int result = followAppointMapper.updateById(appoint);
+        return result > 0;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean cancelAppoint(Long id) {
+        FollowAppoint appoint = followAppointMapper.selectById(id);
+        if (appoint == null) {
+            throw new RuntimeException("预约不存在");
+        }
+        appoint.setStatus("已取消");
+        int result = followAppointMapper.updateById(appoint);
+        return result > 0;
+    }
 }

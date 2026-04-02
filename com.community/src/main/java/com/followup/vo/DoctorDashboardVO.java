@@ -1,5 +1,6 @@
 package com.followup.vo;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 import java.io.Serializable;
 
@@ -32,6 +33,12 @@ public class DoctorDashboardVO implements Serializable {
     private Integer gender;
 
     /**
+     * 性别描述（非数据库字段）
+     */
+    @TableField(exist = false)
+    private String genderText;
+
+    /**
      * 所属科室
      */
     private String department;
@@ -57,6 +64,12 @@ public class DoctorDashboardVO implements Serializable {
     private Integer isOnline;
 
     /**
+     * 在线状态描述（非数据库字段）
+     */
+    @TableField(exist = false)
+    private String isOnlineText;
+
+    /**
      * 手机号
      */
     private String phone;
@@ -65,4 +78,10 @@ public class DoctorDashboardVO implements Serializable {
      * 状态
      */
     private Integer status;
+
+    /**
+     * 状态描述（非数据库字段）
+     */
+    @TableField(exist = false)
+    private String statusText;
 }

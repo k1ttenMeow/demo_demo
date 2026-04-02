@@ -36,10 +36,15 @@ public class FollowPlanServiceImpl extends ServiceImpl<FollowPlanMapper, FollowP
     private SysUserMapper sysUserMapper;
 
     @Override
-    public Page<FollowPlan> getPlanList(Integer page, Integer size, String patientName, String doctorName, String planType, String status) {
+    public Page<FollowPlan> getPlanList(Integer page, Integer size, String patientName, String doctorName, String planType, String status, Long doctorId) {
         Page<FollowPlan> followPage = new Page<>(page, size);
 
         LambdaQueryWrapper<FollowPlan> wrapper = new LambdaQueryWrapper<>();
+
+        // ✅ 优先使用传入的 doctorId（医生登录后查看自己的计划）
+        if (doctorId != null) {
+            wrapper.eq(FollowPlan::getDoctorId, doctorId);
+        }
 
         // 动态添加查询条件
         if (StringUtils.hasText(patientName)) {
@@ -123,12 +128,12 @@ public class FollowPlanServiceImpl extends ServiceImpl<FollowPlanMapper, FollowP
             // 查询医生信息（通过 doctor 表关联 user 表获取姓名）
             Map<Long, String> doctorNameMap = new HashMap<>();
             if (!doctorIds.isEmpty()) {
-                for (Long doctorId : doctorIds) {
-                    Doctor doctor = doctorMapper.selectById(doctorId);
+                for (Long doctorIdItem : doctorIds) {
+                    Doctor doctor = doctorMapper.selectById(doctorIdItem);
                     if (doctor != null && doctor.getUserId() != null) {
                         SysUser user = sysUserMapper.selectById(doctor.getUserId());
                         if (user != null) {
-                            doctorNameMap.put(doctorId, user.getRealName());
+                            doctorNameMap.put(doctorIdItem, user.getRealName());
                         }
                     }
                 }
@@ -167,6 +172,31 @@ public class FollowPlanServiceImpl extends ServiceImpl<FollowPlanMapper, FollowP
     @Override
     public boolean updatePlan(FollowPlan plan) {
         int result = followPlanMapper.updateById(plan);
+        return result > 0;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean updatePlanStatus(Long id, String status) {
+        System.out.println("=== 修改随访计划状态 ===");
+        System.out.println("计划 ID: " + id);
+        System.out.println("新状态：" + status);
+
+        FollowPlan plan = followPlanMapper.selectById(id);
+        if (plan == null) {
+            System.out.println("计划不存在");
+            throw new RuntimeException("随访计划不存在");
+        }
+
+        String oldStatus = plan.getStatus();
+        plan.setStatus(status);
+
+        int result = followPlanMapper.updateById(plan);
+
+        System.out.println("旧状态：" + oldStatus);
+        System.out.println("新状态：" + status);
+        System.out.println("更新结果：" + result);
+
         return result > 0;
     }
 

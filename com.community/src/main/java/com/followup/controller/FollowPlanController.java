@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/followup/plan")
@@ -29,10 +30,11 @@ public class FollowPlanController {
             @RequestParam(required = false) String patientName,
             @RequestParam(required = false) String doctorName,
             @RequestParam(required = false) String planType,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long doctorId
     ) {
         try {
-            Page<FollowPlan> followPage = followPlanService.getPlanList(page, size, patientName, doctorName, planType, status);
+            Page<FollowPlan> followPage = followPlanService.getPlanList(page, size, patientName, doctorName, planType, status, doctorId);
             return R.success(followPage);
         } catch (Exception e) {
             log.error("查询随访计划列表异常", e);
@@ -79,6 +81,23 @@ public class FollowPlanController {
         } catch (Exception e) {
             log.error("删除随访计划异常", e);
             return R.error("删除失败");
+        }
+    }
+
+    /**
+     * 修改随访计划状态
+     */
+    @PutMapping("/status")
+    public R<Boolean> updateStatus(@RequestBody Map<String, Object> params) {
+        try {
+            Long id = Long.valueOf(params.get("id").toString());
+            String status = (String) params.get("status");
+
+            boolean result = followPlanService.updatePlanStatus(id, status);
+            return R.success(result);
+        } catch (Exception e) {
+            log.error("修改随访计划状态异常", e);
+            return R.error("修改失败");
         }
     }
 }

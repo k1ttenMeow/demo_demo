@@ -69,4 +69,49 @@ public interface DoctorService extends IService<Doctor> {
      * @return 患者列表分页结果
      */
     Page<Map<String, Object>> getPatientList(Long doctorId, Integer page, Integer size);
+
+    /**
+     * 获取患者列表（支持搜索）
+     * @param doctorId 医生 ID
+     * @param page 页码
+     * @param size 每页大小
+     * @param realName 患者姓名
+     * @param chronicType 慢病类型
+     * @return 患者列表分页结果
+     */
+    Page<Map<String, Object>> getPatientList(Long doctorId, Integer page, Integer size, String realName, String chronicType);
+
+    /**
+     * 更新医生在线状态
+     * @param doctorId 医生 ID
+     * @param isOnline 在线状态（0-离线 1-在线）
+     * @return 是否成功
+     */
+    boolean updateOnlineStatus(Long doctorId, Integer isOnline);
+
+    /**
+     * 获取医生的预约列表
+     * @param doctorId 医生 ID
+     * @param page 页码
+     * @param size 每页大小
+     * @param patientName 患者姓名
+     * @param status 预约状态
+     * @param appointTime 预约时间
+     * @return 预约列表分页结果
+     */
+    Page<Map<String, Object>> getMyAppointments(
+            Long doctorId,
+            Integer page,
+            Integer size,
+            String patientName,
+            String status,
+            String appointTime
+    );
+
+    /**
+     * 获取医生统计数据
+     * @param doctorId 医生 ID
+     * @return 统计数据
+     */
+    Map<String, Object> getDoctorStats(Long doctorId);
 }

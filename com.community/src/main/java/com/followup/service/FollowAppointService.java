@@ -27,4 +27,19 @@ public interface FollowAppointService extends IService<FollowAppoint> {
      * 删除随访预约
      */
     boolean deleteAppoint(Long id);
+
+    /**
+     * 确认预约
+     */
+    boolean confirmAppoint(Long id);
+
+    /**
+     * 完成预约
+     */
+    boolean completeAppoint(Long id);
+
+    /**
+     * 取消预约
+     */
+    boolean cancelAppoint(Long id);
 }

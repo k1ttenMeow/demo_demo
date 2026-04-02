@@ -178,7 +178,7 @@ const handleLogin = async () => {
     const role = loginForm.userType
     sessionStorage.setItem('userType', role)
 
-    // ============= 新增：构建并存储用户信息 =============
+    // ============= 构建并存储用户信息 =============
     // 先构建基础用户信息对象
     const userInfo = {
       username: loginForm.username.trim(),
@@ -210,18 +210,18 @@ const handleLogin = async () => {
 
           if (patient) {
             console.log('找到匹配的患者:', patient)
-            userInfo.id = patient.id
+            userInfo.id = patient.userId
             userInfo.userId = patient.userId
-            userInfo.patientId = patient.id
+            userInfo.patientId = patient.userId
             userInfo.realName = patient.realName || ''
             userInfo.phone = patient.phone || ''
           } else {
             console.warn('未找到匹配的患者记录')
             // 使用第一个患者作为临时方案
             const firstPatient = patientRes.data.records[0]
-            userInfo.id = firstPatient.id
+            userInfo.id = firstPatient.userId
             userInfo.userId = firstPatient.userId
-            userInfo.patientId = firstPatient.id
+            userInfo.patientId = firstPatient.userId
             userInfo.realName = firstPatient.realName || ''
             userInfo.phone = firstPatient.phone || ''
           }
@@ -243,14 +243,21 @@ const handleLogin = async () => {
 
           if (doctor) {
             console.log('找到匹配的医生:', doctor)
-            userInfo.id = doctor.id
-            userInfo.userId = doctor.userId
-            userInfo.doctorId = doctor.id
+            // ✅ 关键修改：id、userId、doctorId 都存储 user.id（即 doctor.userId）
+            // 这样 follow_appoint.doctor_id 就能正确匹配了
+            userInfo.id = doctor.userId        // 存储 user.id（例如 2）
+            userInfo.userId = doctor.userId    // 存储 user.id（例如 2）
+            userInfo.doctorId = doctor.userId  // 存储 user.id（例如 2），用于 follow_appoint.doctor_id
             userInfo.realName = doctor.realName || ''
             userInfo.phone = doctor.phone || ''
             userInfo.department = doctor.department || ''
             userInfo.skill = doctor.skill || ''
             userInfo.community = doctor.community || ''
+            
+            console.log('✅ 医生信息已设置:')
+            console.log('   - userInfo.id:', userInfo.id)
+            console.log('   - userInfo.userId:', userInfo.userId)
+            console.log('   - userInfo.doctorId:', userInfo.doctorId)
           }
         }
       } else if (role === 1) {
