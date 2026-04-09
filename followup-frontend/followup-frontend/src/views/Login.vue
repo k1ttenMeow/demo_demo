@@ -164,8 +164,8 @@ const handleLogin = async () => {
       return
     }
 
-    // 判断 token 是否存在
-    if (!res.data) {
+    // ✅ 新的返回结构：res.data 包含 token 和用户信息
+    if (!res.data || !res.data.token) {
       ElMessage.error('登录成功但未获取到令牌')
       refreshCode()
       loginForm.code = ''
@@ -174,108 +174,28 @@ const handleLogin = async () => {
     }
 
     // ============= 存储 token 和角色 =============
-    sessionStorage.setItem('followup_token', res.data)
+    sessionStorage.setItem('followup_token', res.data.token)
     const role = loginForm.userType
     sessionStorage.setItem('userType', role)
 
     // ============= 构建并存储用户信息 =============
-    // 先构建基础用户信息对象
+    // ✅ 直接使用后端返回的用户信息
     const userInfo = {
-      username: loginForm.username.trim(),
-      realName: '',  // 稍后从后端获取
-      phone: '',     // 稍后从后端获取
+      id: res.data.id,
+      userId: res.data.id,
+      patientId: res.data.id,  // 患者使用 user.id 作为 patientId
+      username: res.data.username,
+      realName: res.data.realName || '',
+      phone: res.data.phone || '',
       userType: role,
       role: role
     }
 
-    console.log('基础用户信息:', userInfo)
+    console.log('✅ 用户信息已从后端获取:', userInfo)
 
-    // 根据角色不同，查询对应的详细信息
-    try {
-      if (role === 3) {
-        // 患者 - 查询患者列表获取详细信息
-        console.log('正在查询患者信息...')
-        const patientRes = await request.get('/patient/list', {
-          params: {
-            page: 1,
-            size: 10
-          }
-        })
-
-        console.log('患者列表返回:', patientRes)
-
-        if (patientRes.code === 200 && patientRes.data && patientRes.data.records.length > 0) {
-          // 找到匹配的患者
-          const patient = patientRes.data.records.find(p => p.username === userInfo.username)
-
-          if (patient) {
-            console.log('找到匹配的患者:', patient)
-            userInfo.id = patient.userId
-            userInfo.userId = patient.userId
-            userInfo.patientId = patient.userId
-            userInfo.realName = patient.realName || ''
-            userInfo.phone = patient.phone || ''
-          } else {
-            console.warn('未找到匹配的患者记录')
-            // 使用第一个患者作为临时方案
-            const firstPatient = patientRes.data.records[0]
-            userInfo.id = firstPatient.userId
-            userInfo.userId = firstPatient.userId
-            userInfo.patientId = firstPatient.userId
-            userInfo.realName = firstPatient.realName || ''
-            userInfo.phone = firstPatient.phone || ''
-          }
-        }
-      } else if (role === 2) {
-        // 医生 - 查询医生列表获取详细信息
-        console.log('正在查询医生信息...')
-        const doctorRes = await request.get('/doctor/list', {
-          params: {
-            page: 1,
-            size: 10
-          }
-        })
-
-        console.log('医生列表返回:', doctorRes)
-
-        if (doctorRes.code === 200 && doctorRes.data && doctorRes.data.records.length > 0) {
-          const doctor = doctorRes.data.records.find(d => d.username === userInfo.username)
-
-          if (doctor) {
-            console.log('找到匹配的医生:', doctor)
-            // ✅ 关键修改：id、userId、doctorId 都存储 user.id（即 doctor.userId）
-            // 这样 follow_appoint.doctor_id 就能正确匹配了
-            userInfo.id = doctor.userId        // 存储 user.id（例如 2）
-            userInfo.userId = doctor.userId    // 存储 user.id（例如 2）
-            userInfo.doctorId = doctor.userId  // 存储 user.id（例如 2），用于 follow_appoint.doctor_id
-            userInfo.realName = doctor.realName || ''
-            userInfo.phone = doctor.phone || ''
-            userInfo.department = doctor.department || ''
-            userInfo.skill = doctor.skill || ''
-            userInfo.community = doctor.community || ''
-            
-            console.log('✅ 医生信息已设置:')
-            console.log('   - userInfo.id:', userInfo.id)
-            console.log('   - userInfo.userId:', userInfo.userId)
-            console.log('   - userInfo.doctorId:', userInfo.doctorId)
-          }
-        }
-      } else if (role === 1) {
-        // 管理员
-        userInfo.realName = '管理员'
-      }
-
-      console.log('最终用户信息:', userInfo)
-
-      // 存储用户信息到 sessionStorage
-      sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
-      console.log('✅ 用户信息已保存到 sessionStorage')
-
-    } catch (err) {
-      console.error('❌ 查询用户详细信息失败:', err)
-      // 即使查询失败，也至少保存基础信息
-      sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
-    }
+    // 存储用户信息到 sessionStorage
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
+    console.log('✅ 用户信息已保存到 sessionStorage')
 
     ElMessage.success('登录成功')
 

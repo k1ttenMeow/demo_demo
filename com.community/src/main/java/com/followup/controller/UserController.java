@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.validation.Valid;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 用户模块 控制器
@@ -37,15 +39,15 @@ public class UserController {
      * 用户登录（POST 方法，必须携带 JSON 请求体）
      *
      * @param loginDTO 登录 DTO（用户名、密码、角色）
-     * @return JWT Token
+     * @return JWT Token + 用户信息
      */
     @PostMapping("/login")
-    public ResultVO<String> login(@Valid @RequestBody(required = false) UserLoginDTO loginDTO) {
+    public ResultVO<Map<String, Object>> login(@Valid @RequestBody(required = false) UserLoginDTO loginDTO) {
         try {
             // 1. 空指针防护：先判断 loginDTO 是否为 null（解决请求体缺失导致的 NPE）
             if (loginDTO == null) {
                 log.warn("登录失败：请求体缺失或格式错误，请使用 POST 方式 + 携带 JSON 请求体");
-                return ResultVO.error("请求体缺失或格式错误，请使用 POST 方式 + 携带 JSON 请求体"); // ✅ 准确提示
+                return ResultVO.error("请求体缺失或格式错误，请使用 POST 方式 + 携带 JSON 请求体");
             }
 
             // 2. 根据用户名 + 角色查询用户（Lambda 查询，符合阿里规范）
@@ -85,8 +87,18 @@ public class UserController {
             // 5. 生成 JWT Token（参数类型匹配，无空指针）
             String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
 
-            log.info("登录成功：用户名={}，角色={}", user.getUsername(), user.getRole());
-            return ResultVO.success(token);
+            // 6. ✅ 构建返回数据：包含 token 和用户信息
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("token", token);
+            responseData.put("id", user.getId());
+            responseData.put("username", user.getUsername());
+            responseData.put("realName", user.getRealName());
+            responseData.put("phone", user.getPhone());
+            responseData.put("role", user.getRole());
+            responseData.put("userType", user.getRole());
+
+            log.info("登录成功：用户名={}，角色={}，用户ID={}", user.getUsername(), user.getRole(), user.getId());
+            return ResultVO.success(responseData);
         } catch (Exception e) {
             // 捕获所有异常，避免 500 系统错误，返回业务错误
             log.error("登录接口异常：", e);

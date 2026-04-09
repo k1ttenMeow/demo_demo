@@ -15,6 +15,9 @@ import MyDoctorAppointments from '../views/doctor/MyDoctorAppointments.vue'
 import MyDoctorPlans from '../views/doctor/MyDoctorPlans.vue' 
 import MyDoctorRecords from '../views/doctor/MyDoctorRecords.vue'
 import MyPatients from '../views/doctor/MyPatients.vue' 
+import MyPatientAppoints from '../views/patient/MyPatientAppoints.vue'
+import MyPatientPlans from '../views/patient/MyPatientPlans.vue'
+import MyPatientRecords from '../views/patient/MyPatientRecords.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -77,7 +80,7 @@ const routes = [
     meta: { requiresAuth: true, role: 2 } 
   },
   
-    // 医生随访计划路由
+  // 医生随访计划路由
   { 
     path: '/doctor/my-plans', 
     name: 'MyDoctorPlans', 
@@ -99,6 +102,31 @@ const routes = [
     name: 'MyPatients', 
     component: MyPatients, 
     meta: { requiresAuth: true, role: 2 } 
+  },
+
+  // ========== 患者端路由 ==========
+  // 患者预约管理
+  { 
+    path: '/patient/my-patient-appoints', 
+    name: 'MyPatientAppoints', 
+    component: MyPatientAppoints, 
+    meta: { requiresAuth: true, role: 3 } 
+  },
+
+  // 患者随访计划
+  { 
+    path: '/patient/my-patient-plans', 
+    name: 'MyPatientPlans', 
+    component: MyPatientPlans, 
+    meta: { requiresAuth: true, role: 3 } 
+  },
+
+  // 患者随访记录
+  { 
+    path: '/patient/my-patient-records', 
+    name: 'MyPatientRecords', 
+    component: MyPatientRecords, 
+    meta: { requiresAuth: true, role: 3 } 
   },
 
   { path: '/:pathMatch(.*)*', redirect: '/login' }

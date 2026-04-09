@@ -2,8 +2,10 @@ package com.followup.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.followup.common.R;
+import com.followup.entity.Doctor;
 import com.followup.entity.Patient;
 import com.followup.entity.SysUser;
+import com.followup.mapper.DoctorMapper;
 import com.followup.mapper.SysUserMapper;
 import com.followup.service.PatientService;
 import org.slf4j.Logger;
@@ -27,6 +29,84 @@ public class PatientController {
 
     @Resource
     private SysUserMapper sysUserMapper;
+
+    @Resource
+    private DoctorMapper doctorMapper;
+
+    /**
+     * 获取患者仪表板信息（个人详细信息）
+     */
+    @GetMapping("/dashboard/{patientId}")
+    public R<Map<String, Object>> getDashboardInfo(@PathVariable Long patientId) {
+        try {
+            System.out.println("=== 获取患者仪表板信息 ===");
+            System.out.println("patientId (user.id): " + patientId);
+
+            // 1. 查询用户信息
+            SysUser user = sysUserMapper.selectById(patientId);
+            if (user == null || user.getUserType() != 3) {
+                System.out.println("用户不存在或不是患者角色");
+                return R.error("患者不存在");
+            }
+
+            // 2. 通过 user_id 查找 patient 记录
+            List<Patient> patients = patientService.list(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Patient>()
+                            .eq(Patient::getUserId, patientId)
+            );
+
+            if (patients.isEmpty()) {
+                System.out.println("未找到对应的患者档案");
+                return R.error("未找到患者档案");
+            }
+
+            Patient patient = patients.get(0);
+            System.out.println("找到患者档案，patient.id: " + patient.getId());
+
+            // 3. 构建返回结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", patient.getId());
+            result.put("userId", patient.getUserId());
+            result.put("gender", patient.getGender());
+            result.put("doctorId", patient.getDoctorId());
+            result.put("chronicType", patient.getChronicType());
+            result.put("age", patient.getAge());
+            result.put("address", patient.getAddress());
+            result.put("emergencyContact", patient.getEmergencyContact());
+            result.put("emergencyPhone", patient.getEmergencyPhone());
+
+            // 填充用户信息
+            result.put("realName", user.getRealName());
+            result.put("phone", user.getPhone());
+            result.put("username", user.getUsername());
+            result.put("status", user.getStatus());
+
+            // 4. 查询责任医生姓名
+            if (patient.getDoctorId() != null) {
+                // patient.doctor_id 对应的是 doctor 表的主键 id
+                Doctor doctor = doctorMapper.selectById(patient.getDoctorId());
+                if (doctor != null && doctor.getUserId() != null) {
+                    SysUser doctorUser = sysUserMapper.selectById(doctor.getUserId());
+                    if (doctorUser != null) {
+                        result.put("doctorName", doctorUser.getRealName());
+                        System.out.println("✅ 责任医生：" + doctorUser.getRealName());
+                    } else {
+                        result.put("doctorName", null);
+                    }
+                } else {
+                    result.put("doctorName", null);
+                }
+            } else {
+                result.put("doctorName", null);
+            }
+
+            System.out.println("返回的患者信息：" + result);
+            return R.success(result);
+        } catch (Exception e) {
+            log.error("获取患者仪表板信息异常", e);
+            return R.error("查询失败");
+        }
+    }
 
     /**
      * 分页查询患者列表
@@ -107,13 +187,17 @@ public class PatientController {
     @PutMapping
     public R<Boolean> update(@RequestBody Patient patient) {
         try {
+            System.out.println("=== 开始更新患者信息 ===");
+            System.out.println("接收到的数据：" + patient);
+
             boolean result = patientService.updatePatient(patient);
             return R.success(result);
         } catch (Exception e) {
             log.error("更新患者信息异常", e);
-            return R.error("更新失败");
+            return R.error("更新失败：" + e.getMessage());
         }
     }
+
 
     /**
      * 删除患者信息

@@ -9,6 +9,7 @@
 
     <!-- 已登录显示正常内容 -->
     <template v-else>
+      <!-- 头部信息 -->
       <div class="header">
         <h1>🧑 患者健康家园</h1>
         <p class="welcome">欢迎回来，{{ userInfo.realName || '患者' }}！</p>
@@ -17,15 +18,24 @@
       <!-- 个人信息卡片 -->
       <el-card class="info-card" shadow="hover">
         <template #header>
-          <span>📋 个人健康档案</span>
+          <div class="info-card-header">
+            <span>📋 个人健康档案</span>
+            <el-button type="primary" @click="openEditDialog">
+              <el-icon><Edit /></el-icon>
+              修改个人信息
+            </el-button>
+          </div>
         </template>
-        <el-descriptions :column="2" border>
+        <el-descriptions :column="3" border>
           <el-descriptions-item label="姓名">{{ userInfo.realName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="性别">{{ getGenderText(userInfo.gender) }}</el-descriptions-item>
           <el-descriptions-item label="年龄">{{ userInfo.age || '-' }}</el-descriptions-item>
           <el-descriptions-item label="慢病类型">{{ userInfo.chronicType || '-' }}</el-descriptions-item>
           <el-descriptions-item label="责任医生">{{ userInfo.doctorName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="手机号">{{ userInfo.phone || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="地址">{{ userInfo.address || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="家庭住址" :span="2">{{ userInfo.address || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="紧急联系人">{{ userInfo.emergencyContact || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="紧急电话">{{ userInfo.emergencyPhone || '-' }}</el-descriptions-item>
         </el-descriptions>
       </el-card>
 
@@ -41,7 +51,7 @@
             <p class="description">在线预约随访时间，方便快捷</p>
             <el-button type="primary" size="large" @click="handleAppoint">
               <el-icon><Calendar /></el-icon>
-              进行预约
+              开始预约
             </el-button>
           </div>
         </el-card>
@@ -49,14 +59,14 @@
         <el-card class="main-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>📝 随访计划</span>
+              <span>📝 我的随访计划</span>
             </div>
           </template>
           <div class="main-content">
             <p class="description">查看您的个性化随访计划</p>
             <el-button type="success" size="large" @click="handlePlan">
               <el-icon><Document /></el-icon>
-              查看计划
+              我的计划
             </el-button>
           </div>
         </el-card>
@@ -71,12 +81,73 @@
             <p class="description">回顾历史随访记录和健康数据</p>
             <el-button type="warning" size="large" @click="handleRecord">
               <el-icon><Notebook /></el-icon>
-              查看记录
+              随访记录
             </el-button>
           </div>
         </el-card>
       </div>
     </template>
+
+    <!-- 修改个人信息弹窗 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="✏️ 修改个人信息"
+      width="600px"
+    >
+      <el-form
+        ref="formRef"
+        :model="editForm"
+        :rules="rules"
+        label-width="100px"
+      >
+        <el-form-item label="姓名" prop="realName">
+          <el-input v-model="editForm.realName" placeholder="请输入姓名" />
+        </el-form-item>
+        
+        <el-form-item label="性别" prop="gender">
+          <el-radio-group v-model="editForm.gender">
+            <el-radio :label="1">男</el-radio>
+            <el-radio :label="2">女</el-radio>
+            <el-radio :label="0">未知</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        
+        <el-form-item label="年龄" prop="age">
+          <el-input-number v-model="editForm.age" :min="1" :max="150" style="width: 100%" />
+        </el-form-item>
+        
+        <el-form-item label="慢病类型" prop="chronicType">
+          <el-select v-model="editForm.chronicType" placeholder="请选择慢病类型" style="width: 100%">
+            <el-option label="高血压" value="高血压" />
+            <el-option label="糖尿病" value="糖尿病" />
+            <el-option label="冠心病" value="冠心病" />
+            <el-option label="脑卒中" value="脑卒中" />
+            <el-option label="其他" value="其他" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="editForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+        
+        <el-form-item label="家庭住址" prop="address">
+          <el-input v-model="editForm.address" type="textarea" :rows="2" placeholder="请输入家庭住址" />
+        </el-form-item>
+        
+        <el-form-item label="紧急联系人" prop="emergencyContact">
+          <el-input v-model="editForm.emergencyContact" placeholder="请输入紧急联系人" />
+        </el-form-item>
+        
+        <el-form-item label="紧急电话" prop="emergencyPhone">
+          <el-input v-model="editForm.emergencyPhone" placeholder="请输入紧急联系电话" />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitEdit" :loading="submitLoading">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -84,7 +155,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Calendar, Document, Notebook } from '@element-plus/icons-vue'
+import { Calendar, Document, Notebook, Edit } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -93,24 +164,63 @@ const isLoggedIn = ref(false)
 
 const userInfo = reactive({
   id: null,
+  userId: null,
   realName: '',
+  gender: 0,
   age: 0,
   chronicType: '',
   doctorName: '',
   phone: '',
-  address: ''
+  address: '',
+  emergencyContact: '',
+  emergencyPhone: ''
 })
+
+// 编辑弹窗相关
+const editDialogVisible = ref(false)
+const submitLoading = ref(false)
+const formRef = ref(null)
+
+const editForm = reactive({
+  realName: '',
+  gender: 0,
+  age: 0,
+  chronicType: '',
+  phone: '',
+  address: '',
+  emergencyContact: '',
+  emergencyPhone: ''
+})
+
+// 表单验证规则
+const rules = {
+  realName: [
+    { required: true, message: '请输入姓名', trigger: 'blur' }
+  ],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ],
+  emergencyPhone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ]
+}
+
+// 获取性别文本
+const getGenderText = (gender) => {
+  if (gender === 1) return '男'
+  if (gender === 2) return '女'
+  return '未知'
+}
 
 // 加载患者信息
 const loadPatientInfo = async () => {
   try {
     console.log('=== 开始加载患者信息 ===')
 
-    // ============= 修改：从 sessionStorage 获取（与 Login.vue 保持一致） =============
     const userStr = sessionStorage.getItem('userInfo')
     console.log('1. sessionStorage 中的 userInfo:', userStr)
 
-    // 如果 sessionStorage 中没有，再尝试 localStorage
     if (!userStr || userStr === 'undefined' || userStr === 'null') {
       const localUserStr = localStorage.getItem('userInfo')
       console.log('2. localStorage 中的 userInfo:', localUserStr)
@@ -126,7 +236,6 @@ const loadPatientInfo = async () => {
       ElMessage.warning('未找到用户信息，请重新登录')
       isLoggedIn.value = false
 
-      // 3 秒后跳转到登录页
       setTimeout(() => {
         router.push('/login')
       }, 3000)
@@ -147,7 +256,6 @@ const loadPatientInfo = async () => {
 // 处理用户信息
 const processUserInfo = async (user) => {
   try {
-    // 检查用户角色是否为患者（role=3 或 userType=3）
     const userRole = user.userType || user.role
     console.log('6. 用户角色:', userRole)
 
@@ -158,23 +266,35 @@ const processUserInfo = async (user) => {
     }
 
     isLoggedIn.value = true
-    userInfo.id = user.id
-    userInfo.realName = user.realName || ''
-    userInfo.phone = user.phone || ''
-
-    // 获取 patientId（可能在不同字段名中）
-    const patientId = user.patientId || user.id
-    console.log('7. 使用 patientId:', patientId)
-
+    
+    // ✅ 关键修改：直接使用 user.id
+    // 如果 user.id 不存在，尝试其他可能的字段
+    const patientId = user.id || user.patientId || user.userId
+    
+    console.log('=== 患者 ID 信息 ===')
+    console.log('user 对象:', user)
+    console.log('user.id:', user.id)
+    console.log('user.patientId:', user.patientId)
+    console.log('user.userId:', user.userId)
+    console.log('最终使用的 patientId:', patientId)
+    
     if (!patientId) {
-      console.error('无法获取 patientId')
-      ElMessage.warning('未找到患者档案信息')
+      console.error('❌ 无法获取患者 ID，user 对象:', user)
+      ElMessage.warning('未找到患者档案信息，请重新登录')
+      
+      // 清除错误的数据
+      sessionStorage.removeItem('userInfo')
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
       return
     }
+    
+    userInfo.id = patientId
+    userInfo.userId = patientId
 
     console.log('8. 调用接口：/patient/dashboard/' + patientId)
 
-    // 查询患者详细信息
     const res = await request.get(`/patient/dashboard/${patientId}`)
     console.log('9. 后端返回的数据:', res)
 
@@ -182,12 +302,15 @@ const processUserInfo = async (user) => {
       const patient = res.data
       console.log('10. 患者详细信息:', patient)
 
-      userInfo.realName = patient.realName || userInfo.realName
+      userInfo.realName = patient.realName || user.realName || ''
+      userInfo.gender = patient.gender || 0
       userInfo.age = patient.age || 0
       userInfo.chronicType = patient.chronicType || ''
       userInfo.address = patient.address || ''
       userInfo.doctorName = patient.doctorName || '未分配'
-      userInfo.phone = patient.phone || userInfo.phone
+      userInfo.phone = patient.phone || user.phone || ''
+      userInfo.emergencyContact = patient.emergencyContact || ''
+      userInfo.emergencyPhone = patient.emergencyPhone || ''
 
       console.log('11. 最终显示的 userInfo:', userInfo)
       ElMessage.success('健康档案加载成功')
@@ -202,6 +325,104 @@ const processUserInfo = async (user) => {
   }
 }
 
+// 打开编辑弹窗
+const openEditDialog = () => {
+  // 填充表单数据
+  editForm.realName = userInfo.realName
+  editForm.gender = userInfo.gender
+  editForm.age = userInfo.age
+  editForm.chronicType = userInfo.chronicType
+  editForm.phone = userInfo.phone
+  editForm.address = userInfo.address
+  editForm.emergencyContact = userInfo.emergencyContact
+  editForm.emergencyPhone = userInfo.emergencyPhone
+  
+  editDialogVisible.value = true
+}
+
+// 提交修改
+const submitEdit = async () => {
+  if (!formRef.value) return
+  
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    submitLoading.value = true
+    try {
+      const userStr = sessionStorage.getItem('userInfo')
+      if (!userStr) {
+        ElMessage.error('未找到用户信息')
+        return
+      }
+      
+      const user = JSON.parse(userStr)
+      const userId = user.id
+      
+      console.log('=== 准备更新患者信息 ===')
+      console.log('userId:', userId)
+      
+      // ✅ 先查询 patient 表获取 patient.id
+      const patientRes = await request.get('/patient/list', {
+        params: {
+          page: 1,
+          size: 100
+        }
+      })
+      
+      if (patientRes.code !== 200 || !patientRes.data || !patientRes.data.records) {
+        ElMessage.error('查询患者档案失败')
+        return
+      }
+      
+      // 找到当前用户的 patient 记录
+      const patientRecord = patientRes.data.records.find(p => p.userId === userId)
+      
+      if (!patientRecord) {
+        ElMessage.error('未找到患者档案')
+        return
+      }
+      
+      console.log('找到 patient 记录:', patientRecord)
+      
+      // 准备更新数据
+      const updateData = {
+        id: patientRecord.id,  // ✅ 使用 patient 表的主键 id
+        userId: userId,
+        gender: editForm.gender,
+        doctorId: patientRecord.doctorId,  // 保持原医生 ID
+        chronicType: editForm.chronicType,
+        age: editForm.age,
+        address: editForm.address,
+        emergencyContact: editForm.emergencyContact,
+        emergencyPhone: editForm.emergencyPhone,
+        realName: editForm.realName,
+        phone: editForm.phone
+      }
+      
+      console.log('=== 提交更新数据 ===', updateData)
+      
+      // 调用后端接口更新
+      const res = await request.put('/patient', updateData)
+      console.log('更新响应:', res)
+      
+      if (res.code === 200) {
+        ElMessage.success('修改成功')
+        editDialogVisible.value = false
+        
+        // 重新加载患者信息
+        await loadPatientInfo()
+      } else {
+        ElMessage.error(res.msg || '修改失败')
+      }
+    } catch (error) {
+      console.error('修改失败', error)
+      ElMessage.error('修改失败：' + (error.message || '未知错误'))
+    } finally {
+      submitLoading.value = false
+    }
+  })
+}
+
 // 跳转到登录页
 const goToLogin = () => {
   router.push('/login')
@@ -209,17 +430,17 @@ const goToLogin = () => {
 
 // 进行预约
 const handleAppoint = () => {
-  router.push('/followup/appoint')
+  router.push('/patient/my-patient-appoints')
 }
 
 // 查看计划
 const handlePlan = () => {
-  router.push('/followup/plan')
+  router.push('/patient/my-patient-plans')
 }
 
 // 查看记录
 const handleRecord = () => {
-  router.push('/followup/record')
+  router.push('/patient/my-patient-records')
 }
 
 onMounted(() => {
@@ -250,6 +471,12 @@ onMounted(() => {
 
 .info-card {
   margin-bottom: 24px;
+}
+
+.info-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .main-grid {
