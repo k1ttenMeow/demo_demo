@@ -32,6 +32,77 @@ public class FollowRecordController {
     private SysUserMapper sysUserMapper;
 
     /**
+     * 分页查询随访记录列表（管理员专用）
+     */
+    @GetMapping("/admin/list")
+    public R<Page<Map<String, Object>>> getAdminList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String patientName,
+            @RequestParam(required = false) String doctorName,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate
+    ) {
+        try {
+            Page<FollowRecord> followPage = followRecordService.getRecordList(
+                    page, size, patientName, doctorName,
+                    startDate != null ? startDate.toString() : null,
+                    endDate != null ? endDate.toString() : null
+            );
+
+            // 转换为 Map 并填充患者和医生姓名
+            List<Map<String, Object>> resultList = followPage.getRecords().stream().map(record -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", record.getId());
+                map.put("planId", record.getPlanId());
+                map.put("patientId", record.getPatientId());
+                map.put("doctorId", record.getDoctorId());
+                map.put("followTime", record.getFollowTime());
+                map.put("bloodPressure", record.getBloodPressure());
+                map.put("bloodSugar", record.getBloodSugar());
+                map.put("drug", record.getDrug());
+                map.put("symptom", record.getSymptom());
+                map.put("remark", record.getRemark());
+
+                // 查询患者姓名（patient_id 对应 user.id）
+                if (record.getPatientId() != null) {
+                    SysUser patientUser = sysUserMapper.selectById(record.getPatientId());
+                    if (patientUser != null) {
+                        map.put("patientName", patientUser.getRealName());
+                    } else {
+                        map.put("patientName", null);
+                    }
+                } else {
+                    map.put("patientName", null);
+                }
+
+                // 查询医生姓名（doctor_id 对应 user.id）
+                if (record.getDoctorId() != null) {
+                    SysUser doctorUser = sysUserMapper.selectById(record.getDoctorId());
+                    if (doctorUser != null) {
+                        map.put("doctorName", doctorUser.getRealName());
+                    } else {
+                        map.put("doctorName", null);
+                    }
+                } else {
+                    map.put("doctorName", null);
+                }
+
+                return map;
+            }).collect(Collectors.toList());
+
+            Page<Map<String, Object>> resultPage = new Page<>(page, size);
+            resultPage.setRecords(resultList);
+            resultPage.setTotal(followPage.getTotal());
+
+            return R.success(resultPage);
+        } catch (Exception e) {
+            log.error("管理员查询随访记录列表异常", e);
+            return R.error("查询失败");
+        }
+    }
+
+    /**
      * 分页查询随访记录列表
      */
     @GetMapping("/list")

@@ -62,7 +62,7 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
             List<SysUser> users = sysUserMapper.selectList(
                     new LambdaQueryWrapper<SysUser>()
                             .like(SysUser::getRealName, realName)
-                            .eq(SysUser::getUserType, 2) // 只查询医生角色
+                            .eq(SysUser::getRole, 2) // 只查询医生角色
             );
             List<Long> userIds = users.stream()
                     .map(SysUser::getId)
@@ -103,7 +103,7 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
         user.setPassword("{bcrypt}" + new BCryptPasswordEncoder().encode(doctor.getPassword()));
         user.setRealName(doctor.getRealName());
         user.setPhone(doctor.getPhone());
-        user.setUserType(2); // 医生角色
+        user.setRole(2); // 医生角色
         user.setStatus(doctor.getStatus() != null ? doctor.getStatus() : 1);
 
         int userResult = sysUserMapper.insert(user);
@@ -179,7 +179,7 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
         // ✅ 直接假设传入的 doctorId 是 user.id，从 user 表查询
         SysUser user = sysUserMapper.selectById(doctorId);
 
-        if (user == null || user.getUserType() != 2) {
+        if (user == null || user.getRole() != 2) {
             System.out.println("用户不存在或不是医生角色");
             return null;
         }
@@ -312,7 +312,7 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
             List<SysUser> users = sysUserMapper.selectList(
                     new LambdaQueryWrapper<SysUser>()
                             .like(StringUtils.hasText(realName), SysUser::getRealName, realName)
-                            .eq(SysUser::getUserType, 3) // 只查询患者角色
+                            .eq(SysUser::getRole, 3) // 只查询患者角色
             );
             List<Long> userIds = users.stream()
                     .map(SysUser::getId)
@@ -422,16 +422,30 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
             String appointTime
     ) {
         System.out.println("=== 开始查询医生预约 ===");
-        System.out.println("doctorId (user.id): " + doctorId);
+        System.out.println("传入的 doctorId (应该是 user.id): " + doctorId);
         System.out.println("page: " + page + ", size: " + size);
+
+        // ✅ 将 user.id 转换为 doctor.id
+        Doctor doctorRecord = doctorMapper.selectOne(
+                new LambdaQueryWrapper<Doctor>()
+                        .eq(Doctor::getUserId, doctorId)
+        );
+
+        if (doctorRecord == null) {
+            System.out.println("未找到医生档案记录");
+            return new Page<>(page, size);
+        }
+
+        Long actualDoctorId = doctorRecord.getId();
+        System.out.println("转换后的 doctor.id: " + actualDoctorId);
 
         // 直接查询预约列表
         Page<FollowAppoint> followPage = new Page<>(page, size);
 
         LambdaQueryWrapper<FollowAppoint> wrapper = new LambdaQueryWrapper<>();
 
-        // doctor_id 直接关联 user.id，所以这里直接使用
-        wrapper.eq(FollowAppoint::getDoctorId, doctorId);
+        // ✅ 使用 doctor.id 进行查询
+        wrapper.eq(FollowAppoint::getDoctorId, actualDoctorId);
 
         // 动态添加查询条件
         if (StringUtils.hasText(patientName)) {
@@ -439,7 +453,7 @@ public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> impleme
             List<SysUser> users = sysUserMapper.selectList(
                     new LambdaQueryWrapper<SysUser>()
                             .like(StringUtils.hasText(patientName), SysUser::getRealName, patientName)
-                            .eq(SysUser::getUserType, 3) // 只查询患者角色
+                            .eq(SysUser::getRole, 3) // 只查询患者角色
             );
             List<Long> userIds = users.stream()
                     .map(SysUser::getId)

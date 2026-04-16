@@ -242,9 +242,9 @@
           </el-form-item>
           <el-form-item label="性别" prop="gender">
             <el-radio-group v-model="registerForm.gender">
-              <el-radio :label="0">未知</el-radio>
-              <el-radio :label="1">男</el-radio>
-              <el-radio :label="2">女</el-radio>
+              <el-radio :value="0">未知</el-radio>
+              <el-radio :value="1">男</el-radio>
+              <el-radio :value="2">女</el-radio>
             </el-radio-group>
           </el-form-item>
         </template>
@@ -264,6 +264,9 @@
           <el-form-item label="年龄" prop="age">
             <el-input-number v-model="registerForm.age" :min="1" :max="150" style="width: 100%" />
           </el-form-item>
+          <el-form-item label="身份证号" prop="idCard">
+            <el-input v-model="registerForm.idCard" placeholder="请输入身份证号" maxlength="18" />
+          </el-form-item>
           <el-form-item label="地址" prop="address">
             <el-input v-model="registerForm.address" placeholder="请输入详细住址" />
           </el-form-item>
@@ -275,9 +278,9 @@
           </el-form-item>
           <el-form-item label="性别" prop="gender">
             <el-radio-group v-model="registerForm.gender">
-              <el-radio :label="0">未知</el-radio>
-              <el-radio :label="1">男</el-radio>
-              <el-radio :label="2">女</el-radio>
+              <el-radio :value="0">未知</el-radio>
+              <el-radio :value="1">男</el-radio>
+              <el-radio :value="2">女</el-radio>
             </el-radio-group>
           </el-form-item>
         </template>
@@ -346,9 +349,9 @@
           </el-form-item>
           <el-form-item label="性别" prop="gender">
             <el-radio-group v-model="editForm.gender">
-              <el-radio :label="0">未知</el-radio>
-              <el-radio :label="1">男</el-radio>
-              <el-radio :label="2">女</el-radio>
+              <el-radio :value="0">未知</el-radio>
+              <el-radio :value="1">男</el-radio>
+              <el-radio :value="2">女</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="在线状态" prop="isOnline">
@@ -374,6 +377,9 @@
           <el-form-item label="年龄" prop="age">
             <el-input-number v-model="editForm.age" :min="1" :max="150" style="width: 100%" />
           </el-form-item>
+          <el-form-item label="身份证号" prop="idCard">
+            <el-input v-model="editForm.idCard" placeholder="请输入身份证号" maxlength="18" />
+          </el-form-item>
           <el-form-item label="地址" prop="address">
             <el-input v-model="editForm.address" placeholder="请输入详细住址" />
           </el-form-item>
@@ -385,9 +391,9 @@
           </el-form-item>
           <el-form-item label="性别" prop="gender">
             <el-radio-group v-model="editForm.gender">
-              <el-radio :label="0">未知</el-radio>
-              <el-radio :label="1">男</el-radio>
-              <el-radio :label="2">女</el-radio>
+              <el-radio :value="0">未知</el-radio>
+              <el-radio :value="1">男</el-radio>
+              <el-radio :value="2">女</el-radio>
             </el-radio-group>
           </el-form-item>
         </template>
@@ -471,6 +477,7 @@ const registerForm = reactive({
   // 患者专属字段
   chronicType: '',
   age: 0,
+  idCard: '',
   address: '',
   emergencyContact: '',
   emergencyPhone: ''
@@ -549,6 +556,10 @@ const registerRules = {
         }
       }}
   ],
+  idCard: [
+  { required: true, message: '请输入身份证号', trigger: 'blur' },
+  { pattern: /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/, message: '请输入正确的身份证号', trigger: 'blur' }
+  ],
   emergencyContact: [
     { required: true, message: '请输入紧急联系人', trigger: 'blur', validator: (rule, value, callback) => {
         if (registerForm.userType === 3 && !value) {
@@ -591,6 +602,7 @@ const editForm = reactive({
   // 患者专属字段
   chronicType: '',
   age: 0,
+  idCard: '',
   address: '',
   emergencyContact: '',
   emergencyPhone: ''
@@ -664,6 +676,10 @@ const editRules = {
           callback()
         }
       }}
+  ],
+  idCard: [
+    { required: true, message: '请输入身份证号', trigger: 'blur' },
+    { pattern: /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/, message: '请输入正确的身份证号', trigger: 'blur' }
   ],
   emergencyContact: [
     { required: true, message: '请输入紧急联系人', trigger: 'blur', validator: (rule, value, callback) => {
@@ -749,18 +765,25 @@ const goTo = (path) => {
 // 处理编辑用户（打开弹窗并填充数据）
 const handleEditUser = async (row) => {
   console.log('编辑用户:', row)
+  
+  // ✅ 使用 getUserRoleType 函数获取正确的角色类型
+  const userType = getUserRoleType(row)
+  console.log('用户角色 (userType):', userType)
 
   // 填充基本信息
   editForm.id = row.id
   editForm.username = row.username
   editForm.realName = row.realName
   editForm.phone = row.phone
-  editForm.userType = row.role || row.userType
+  editForm.userType = userType
   editForm.status = row.status
+  
+  console.log('editForm.userType:', editForm.userType)
 
   // 根据角色查询详细信息
   try {
     if (editForm.userType === 2) {
+      console.log('=== 查询医生详细信息 ===')
       // 医生 - 查询医生详细信息
       const doctorRes = await request.get('/doctor/list', {
         params: { page: 1, size: 10 }
@@ -778,25 +801,48 @@ const handleEditUser = async (row) => {
         }
       }
     } else if (editForm.userType === 3) {
+      console.log('=== 查询患者详细信息 ===')
       // 患者 - 查询患者详细信息
       const patientRes = await request.get('/patient/list', {
         params: { page: 1, size: 10 }
       })
+      
+      console.log('患者列表响应:', patientRes)
 
       if (patientRes.code === 200 && patientRes.data && patientRes.data.records) {
+        console.log('患者记录数量:', patientRes.data.records.length)
+        console.log('所有患者记录:', patientRes.data.records)
+        
         const patient = patientRes.data.records.find(p => p.userId === row.id)
+        console.log('找到的患者记录:', patient)
+        
         if (patient) {
           editForm.chronicType = patient.chronicType || ''
           editForm.age = patient.age || 0
+          editForm.idCard = patient.idCard || ''
           editForm.address = patient.address || ''
           editForm.emergencyContact = patient.emergencyContact || ''
           editForm.emergencyPhone = patient.emergencyPhone || ''
           editForm.gender = patient.gender || 0
+          
+          console.log('=== 患者编辑数据填充完成 ===')
+          console.log('chronicType:', editForm.chronicType)
+          console.log('age:', editForm.age)
+          console.log('idCard:', editForm.idCard)
+          console.log('address:', editForm.address)
+          console.log('emergencyContact:', editForm.emergencyContact)
+          console.log('emergencyPhone:', editForm.emergencyPhone)
+          console.log('gender:', editForm.gender)
+        } else {
+          console.warn('未找到 userId 为', row.id, '的患者记录')
         }
+      } else {
+        console.error('患者列表查询失败或无数据')
       }
     }
 
     // 打开编辑弹窗
+    console.log('准备打开编辑弹窗')
     editDialogVisible.value = true
   } catch (error) {
     console.error('查询用户详细信息失败:', error)
@@ -857,6 +903,7 @@ const resetForm = () => {
   registerForm.gender = 0
   registerForm.chronicType = ''
   registerForm.age = 0
+  registerForm.idCard = ''
   registerForm.address = ''
   registerForm.emergencyContact = ''
   registerForm.emergencyPhone = ''
@@ -881,6 +928,7 @@ const resetEditForm = () => {
   editForm.isOnline = 0
   editForm.chronicType = ''
   editForm.age = 0
+  editForm.idCard = ''
   editForm.address = ''
   editForm.emergencyContact = ''
   editForm.emergencyPhone = ''
@@ -931,11 +979,12 @@ const handleRegister = async () => {
             ElMessage.warning('用户创建成功，但医生信息创建失败')
           }
         } else if (registerForm.userType === 3) {
-          // 创建患者信息
+            // 创建患者信息
           const patientData = {
             userId: userId,
             chronicType: registerForm.chronicType,
             age: registerForm.age,
+            idCard: registerForm.idCard,
             address: registerForm.address,
             emergencyContact: registerForm.emergencyContact,
             emergencyPhone: registerForm.emergencyPhone,
@@ -971,7 +1020,7 @@ const handleEditSave = async () => {
     if (valid) {
       editLoading.value = true
       try {
-        // 构建更新数据
+        // 1. 更新用户基本信息
         const updateData = {
           id: editForm.id,
           username: editForm.username,
@@ -981,18 +1030,91 @@ const handleEditSave = async () => {
           status: editForm.status
         }
 
-        // 调用后端更新接口
-        const res = await request.put('/admin/user', updateData)
-        if (res.code === 200) {
-          ElMessage.success('更新成功')
-          editDialogVisible.value = false
-          resetEditForm()
-          loadData() // 刷新列表
-          loadAllUsers() // 刷新全部用户列表
-        } else {
-          ElMessage.error(res.msg || '更新失败')
+        // 调用后端更新用户接口
+        const userRes = await request.put('/admin/user', updateData)
+        if (userRes.code !== 200) {
+          ElMessage.error(userRes.msg || '更新用户信息失败')
+          return
         }
+
+        // 2. 根据角色更新详细信息
+        if (editForm.userType === 2) {
+          // 更新医生信息
+          console.log('=== 更新医生信息 ===')
+          
+          // 先查询医生记录
+          const doctorListRes = await request.get('/doctor/list', {
+            params: { page: 1, size: 100 }
+          })
+          
+          if (doctorListRes.code === 200 && doctorListRes.data && doctorListRes.data.records) {
+            const doctor = doctorListRes.data.records.find(d => d.userId === editForm.id)
+            
+            if (doctor) {
+              // 更新现有医生记录
+              const doctorData = {
+                id: doctor.id,
+                userId: editForm.id,
+                realName: editForm.realName,
+                department: editForm.department,
+                skill: editForm.skill,
+                community: editForm.community,
+                title: editForm.title,
+                gender: editForm.gender,
+                isOnline: editForm.isOnline
+              }
+              
+              console.log('更新医生数据:', doctorData)
+              const doctorRes = await request.put('/doctor', doctorData)
+              if (doctorRes.code !== 200) {
+                ElMessage.warning('用户信息更新成功，但医生信息更新失败')
+              }
+            }
+          }
+        } else if (editForm.userType === 3) {
+          // 更新患者信息
+          console.log('=== 更新患者信息 ===')
+          
+          // 先查询患者记录
+          const patientListRes = await request.get('/patient/list', {
+            params: { page: 1, size: 100 }
+          })
+          
+          if (patientListRes.code === 200 && patientListRes.data && patientListRes.data.records) {
+            const patient = patientListRes.data.records.find(p => p.userId === editForm.id)
+            
+            if (patient) {
+              // 更新现有患者记录
+              const patientData = {
+                id: patient.id,
+                userId: editForm.id,
+                chronicType: editForm.chronicType,
+                age: editForm.age,
+                idCard: editForm.idCard,
+                address: editForm.address,
+                emergencyContact: editForm.emergencyContact,
+                emergencyPhone: editForm.emergencyPhone,
+                gender: editForm.gender
+              }
+              
+              console.log('更新患者数据:', patientData)
+              const patientRes = await request.put('/patient', patientData)
+              if (patientRes.code !== 200) {
+                ElMessage.warning('用户信息更新成功，但患者信息更新失败')
+              }
+            } else {
+              console.warn('未找到患者记录，可能需要创建新记录')
+            }
+          }
+        }
+
+        ElMessage.success('更新成功')
+        editDialogVisible.value = false
+        resetEditForm()
+        loadData() // 刷新列表
+        loadAllUsers() // 刷新全部用户列表
       } catch (error) {
+        console.error('更新失败:', error)
         ElMessage.error('更新失败，请重试')
       } finally {
         editLoading.value = false

@@ -241,7 +241,7 @@ const loadData = async () => {
       startDate: searchForm.dateRange?.[0] || null,
       endDate: searchForm.dateRange?.[1] || null
     }
-    const res = await request.get('/followup/record/list', { params })
+    const res = await request.get('/followup/record/admin/list', { params })
     if (res.code === 200) {
       tableData.value = res.data.records || []
       total.value = res.data.total || 0

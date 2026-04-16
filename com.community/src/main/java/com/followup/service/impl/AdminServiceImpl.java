@@ -67,8 +67,8 @@ public class AdminServiceImpl implements AdminService {
         if (user.getStatus() == null) {
             user.setStatus(1);
         }
-        if (user.getUserType() == null) {
-            user.setUserType(3); // 默认为患者
+        if (user.getRole() == null) {
+            user.setRole(3); // 默认为患者
         }
 
         // 插入用户表
@@ -78,7 +78,7 @@ public class AdminServiceImpl implements AdminService {
         }
 
         // 如果是医生，同时创建医生记录
-        if (user.getUserType() == 2) {
+        if (user.getRole() == 2) {
             Doctor doctor = new Doctor();
             doctor.setUserId(user.getId()); // 关联用户 ID
             doctor.setDepartment(user.getDepartment());
@@ -92,7 +92,7 @@ public class AdminServiceImpl implements AdminService {
         }
 
         // 如果是患者，同时创建患者记录
-        if (user.getUserType() == 3) {
+        if (user.getRole() == 3) {
             Patient patient = new Patient();
             patient.setUserId(user.getId());
             patient.setDoctorId(1L); // 默认分配给医生 ID=1
@@ -128,7 +128,7 @@ public class AdminServiceImpl implements AdminService {
             }
 
             // 如果是医生，先删除医生表记录
-            if (user.getUserType() == 2) {
+            if (user.getRole() == 2) {
                 Doctor doctor = doctorMapper.selectOne(
                         new LambdaQueryWrapper<Doctor>()
                                 .eq(Doctor::getUserId, id)
@@ -139,7 +139,7 @@ public class AdminServiceImpl implements AdminService {
             }
 
             // 如果是患者，先删除患者表记录
-            if (user.getUserType() == 3) {
+            if (user.getRole() == 3) {
                 Patient patient = patientMapper.selectOne(
                         new LambdaQueryWrapper<Patient>()
                                 .eq(Patient::getUserId, id)
@@ -172,7 +172,7 @@ public class AdminServiceImpl implements AdminService {
             wrapper.like(SysUser::getRealName, realName);
         }
         if (userType != null) {
-            wrapper.eq(SysUser::getUserType, userType);
+            wrapper.eq(SysUser::getRole, userType);
         }
         if (StringUtils.hasText(phone)) {
             wrapper.like(SysUser::getPhone, phone);

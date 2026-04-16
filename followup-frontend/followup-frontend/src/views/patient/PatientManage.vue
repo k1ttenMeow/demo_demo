@@ -53,6 +53,11 @@
             <span>{{ row.realName }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="身份证号" width="180">
+          <template #default="{ row }">
+            <span>{{ row.idCard || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="手机号" width="130">
           <template #default="{ row }">
             <span>{{ row.phone }}</span>
@@ -65,7 +70,7 @@
         <el-table-column prop="emergencyPhone" label="紧急电话" width="130" />
         <el-table-column label="责任医生" width="120">
           <template #default="{ row }">
-            <span>{{ row.doctorName }}</span>
+            <span>{{ row.doctorName || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -167,6 +172,10 @@
           </el-col>
         </el-row>
 
+        <el-form-item label="身份证号" prop="idCard">
+          <el-input v-model="form.idCard" placeholder="请输入身份证号" maxlength="18" />
+        </el-form-item>
+
         <el-form-item label="责任医生" prop="doctorId">
           <el-autocomplete
             v-model="doctorNameInput"
@@ -233,6 +242,7 @@ const form = reactive({
   address: '',
   emergencyContact: '',
   emergencyPhone: '',
+  idCard: '',
   doctorId: null,
   gender: null,
   status: 1
@@ -272,6 +282,10 @@ const rules = {
     { required: true, message: '请输入紧急联系电话', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
   ],
+    idCard: [
+    { required: true, message: '请输入身份证号', trigger: 'blur' },
+    { pattern: /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/, message: '请输入正确的身份证号', trigger: 'blur' }
+  ],
   doctorId: [
     { required: true, message: '请选择责任医生', trigger: 'change' }
   ]
@@ -289,15 +303,22 @@ const loadData = async () => {
     const params = {
       page: currentPage.value,
       size: pageSize.value,
-      ...searchForm
+      realName: searchForm.realName,
+      phone: searchForm.phone,
+      chronicType: searchForm.chronicType,
+      doctorName: searchForm.doctorName
     }
-    const res = await request.get('/patient/list', { params })
-    if (res.code === 200) {
+
+    const res = await request.get('/patient/admin/list', { params })
+
+    if (res.code === 200 && res.data) {
       tableData.value = res.data.records || []
       total.value = res.data.total || 0
+    } else {
+      ElMessage.error(res.msg || '加载数据失败')
     }
   } catch (error) {
-    console.error('加载数据异常:', error)
+    console.error('加载数据失败:', error)
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
@@ -371,6 +392,7 @@ const handleEdit = (row) => {
   form.address = row.address || ''
   form.emergencyContact = row.emergencyContact || ''
   form.emergencyPhone = row.emergencyPhone || ''
+  form.idCard = row.idCard || ''
   form.doctorId = row.doctorId || null
   form.gender = row.gender || null
   form.status = row.status !== undefined ? row.status : 1
@@ -454,6 +476,7 @@ const resetForm = () => {
   form.address = ''
   form.emergencyContact = ''
   form.emergencyPhone = ''
+  form.idCard = ''
   form.doctorId = null
   form.gender = null
   form.status = 1

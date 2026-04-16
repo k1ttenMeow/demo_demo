@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * @date 2026-03-26
  */
 @Data
-@TableName("user")
+@TableName("`user`")
 public class SysUser implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -96,8 +96,7 @@ public class SysUser implements Serializable {
      * 用户类型（1-管理员 2-医生 3-患者）
      * 注意：数据库字段名为 role
      */
-    @TableField(value = "role", exist = true)
-    private Integer userType;
+    private Integer role;
 
     /**
      * 账号状态（0-禁用 1-启用）

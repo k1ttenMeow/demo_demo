@@ -134,7 +134,7 @@ public class AdminController {
         vo.setUsername(user.getUsername());
         vo.setRealName(user.getRealName());
         vo.setPhone(user.getPhone());
-        vo.setRole(user.getUserType()); // 将 userType 映射为 role
+        vo.setRole(user.getRole()); // ✅ 改为 getRole()
         vo.setStatus(user.getStatus());
         vo.setCreateTime(user.getCreateTime());
         vo.setUpdateTime(user.getUpdateTime());

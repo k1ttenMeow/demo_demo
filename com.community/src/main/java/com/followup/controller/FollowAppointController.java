@@ -110,13 +110,22 @@ public class FollowAppointController {
                 map.put("status", appoint.getStatus());
                 map.put("remark", appoint.getRemark());
 
-                // ✅ doctor_id 直接对应 user.id，直接查询用户表获取医生姓名
+                // ✅ doctor_id 对应的是 doctor 表的主键 id，需要先查 doctor 表
                 if (appoint.getDoctorId() != null) {
-                    SysUser doctorUser = sysUserMapper.selectById(appoint.getDoctorId());
-                    if (doctorUser != null) {
-                        map.put("doctorName", doctorUser.getRealName());
-                        System.out.println("  - 医生姓名: " + doctorUser.getRealName());
+                    Doctor doctor = doctorMapper.selectById(appoint.getDoctorId());
+                    if (doctor != null && doctor.getUserId() != null) {
+                        SysUser doctorUser = sysUserMapper.selectById(doctor.getUserId());
+                        if (doctorUser != null) {
+                            map.put("doctorName", doctorUser.getRealName());
+                            System.out.println("  - 医生姓名: " + doctorUser.getRealName());
+                        } else {
+                            map.put("doctorName", null);
+                        }
+                    } else {
+                        map.put("doctorName", null);
                     }
+                } else {
+                    map.put("doctorName", null);
                 }
 
                 return map;

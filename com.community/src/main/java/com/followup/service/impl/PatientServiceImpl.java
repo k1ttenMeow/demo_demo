@@ -46,7 +46,7 @@ public class PatientServiceImpl extends ServiceImpl<PatientMapper, Patient> impl
             List<SysUser> users = sysUserMapper.selectList(
                     new LambdaQueryWrapper<SysUser>()
                             .like(SysUser::getRealName, realName)
-                            .eq(SysUser::getUserType, 3) // 只查询患者角色
+                            .eq(SysUser::getRole, 3) // 只查询患者角色
             );
             List<Long> userIds = users.stream()
                     .map(SysUser::getId)
@@ -64,7 +64,7 @@ public class PatientServiceImpl extends ServiceImpl<PatientMapper, Patient> impl
             List<SysUser> users = sysUserMapper.selectList(
                     new LambdaQueryWrapper<SysUser>()
                             .eq(SysUser::getPhone, phone)
-                            .eq(SysUser::getUserType, 3)
+                            .eq(SysUser::getRole, 3)
             );
             List<Long> userIds = users.stream()
                     .map(SysUser::getId)
@@ -195,7 +195,7 @@ public class PatientServiceImpl extends ServiceImpl<PatientMapper, Patient> impl
         user.setPassword("{bcrypt}" + new BCryptPasswordEncoder().encode(patient.getPassword()));
         user.setRealName(patient.getRealName());
         user.setPhone(patient.getPhone());
-        user.setUserType(3); // 患者角色
+        user.setRole(3); // 患者角色
         user.setStatus(patient.getStatus() != null ? patient.getStatus() : 1);
 
         int userResult = sysUserMapper.insert(user);

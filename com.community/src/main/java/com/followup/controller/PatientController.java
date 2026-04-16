@@ -44,7 +44,7 @@ public class PatientController {
 
             // 1. 查询用户信息
             SysUser user = sysUserMapper.selectById(patientId);
-            if (user == null || user.getUserType() != 3) {
+            if (user == null || user.getRole() != 3) {
                 System.out.println("用户不存在或不是患者角色");
                 return R.error("患者不存在");
             }
@@ -71,6 +71,7 @@ public class PatientController {
             result.put("doctorId", patient.getDoctorId());
             result.put("chronicType", patient.getChronicType());
             result.put("age", patient.getAge());
+            result.put("idCard", patient.getIdCard());
             result.put("address", patient.getAddress());
             result.put("emergencyContact", patient.getEmergencyContact());
             result.put("emergencyPhone", patient.getEmergencyPhone());
@@ -104,6 +105,90 @@ public class PatientController {
             return R.success(result);
         } catch (Exception e) {
             log.error("获取患者仪表板信息异常", e);
+            return R.error("查询失败");
+        }
+    }
+
+    /**
+     * 分页查询患者列表（管理员专用，包含完整信息）
+     */
+    @GetMapping("/admin/list")
+    public R<Page<Map<String, Object>>> getAdminList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String realName,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String chronicType,
+            @RequestParam(required = false) String doctorName
+    ) {
+        try {
+            // 调用 Service 层查询
+            Page<Patient> patientPage = patientService.getPatientList(page, size, realName, chronicType, null, doctorName);
+
+            // 为每个患者添加完整信息
+            List<Map<String, Object>> resultList = new ArrayList<>();
+            for (Patient patient : patientPage.getRecords()) {
+                Map<String, Object> patientMap = new HashMap<>();
+                patientMap.put("id", patient.getId());
+                patientMap.put("userId", patient.getUserId());
+                patientMap.put("gender", patient.getGender());
+                patientMap.put("doctorId", patient.getDoctorId());
+                patientMap.put("chronicType", patient.getChronicType());
+                patientMap.put("age", patient.getAge());
+                patientMap.put("address", patient.getAddress());
+                patientMap.put("emergencyContact", patient.getEmergencyContact());
+                patientMap.put("emergencyPhone", patient.getEmergencyPhone());
+                patientMap.put("idCard", patient.getIdCard());
+
+                // 查询用户信息
+                if (patient.getUserId() != null) {
+                    SysUser user = sysUserMapper.selectById(patient.getUserId());
+                    if (user != null) {
+                        patientMap.put("realName", user.getRealName());
+                        patientMap.put("phone", user.getPhone());
+                        patientMap.put("username", user.getUsername());
+                        patientMap.put("status", user.getStatus());
+                    } else {
+                        patientMap.put("realName", null);
+                        patientMap.put("phone", null);
+                        patientMap.put("username", null);
+                        patientMap.put("status", null);
+                    }
+                } else {
+                    patientMap.put("realName", null);
+                    patientMap.put("phone", null);
+                    patientMap.put("username", null);
+                    patientMap.put("status", null);
+                }
+
+                // 查询责任医生姓名
+                if (patient.getDoctorId() != null) {
+                    Doctor doctor = doctorMapper.selectById(patient.getDoctorId());
+                    if (doctor != null && doctor.getUserId() != null) {
+                        SysUser doctorUser = sysUserMapper.selectById(doctor.getUserId());
+                        if (doctorUser != null) {
+                            patientMap.put("doctorName", doctorUser.getRealName());
+                        } else {
+                            patientMap.put("doctorName", null);
+                        }
+                    } else {
+                        patientMap.put("doctorName", null);
+                    }
+                } else {
+                    patientMap.put("doctorName", null);
+                }
+
+                resultList.add(patientMap);
+            }
+
+            // 创建新的 Page 对象
+            Page<Map<String, Object>> resultPage = new Page<>(page, size);
+            resultPage.setRecords(resultList);
+            resultPage.setTotal(patientPage.getTotal());
+
+            return R.success(resultPage);
+        } catch (Exception e) {
+            log.error("管理员查询患者列表异常", e);
             return R.error("查询失败");
         }
     }

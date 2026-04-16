@@ -8,6 +8,10 @@
         </el-button>
         <h1>📝 我的随访计划</h1>
       </div>
+      <el-button type="primary" @click="handleAdd">
+        <el-icon><Plus /></el-icon>
+        新增计划
+      </el-button>
     </div>
 
     <el-card>
@@ -109,6 +113,70 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 新增计划弹窗 -->
+    <el-dialog
+      v-model="addDialogVisible"
+      title="新增随访计划"
+      width="600px"
+      :close-on-click-modal="false"
+      @close="resetAddForm"
+    >
+      <el-form
+        ref="addFormRef"
+        :model="addForm"
+        :rules="addRules"
+        label-width="120px"
+      >
+        <el-form-item label="患者" prop="patientId">
+          <el-autocomplete
+            v-model="patientNameInput"
+            :fetch-suggestions="searchPatient"
+            placeholder="请输入患者姓名"
+            style="width: 100%"
+            clearable
+            @select="handlePatientSelect"
+          />
+        </el-form-item>
+        <el-form-item label="计划类型" prop="planType">
+          <el-select v-model="addForm.planType" placeholder="请选择计划类型" style="width: 100%" @change="handlePlanTypeChange">
+            <el-option label="月度随访" value="月度随访" />
+            <el-option label="季度随访" value="季度随访" />
+            <el-option label="年度随访" value="年度随访" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="周期" prop="cycle">
+          <el-input v-model="addForm.cycle" placeholder="例如：30 天、90 天" />
+        </el-form-item>
+        <el-form-item label="下次随访时间" prop="nextTime">
+          <el-date-picker
+            v-model="addForm.nextTime"
+            type="date"
+            placeholder="选择下次随访时间"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="addForm.status" placeholder="请选择状态" style="width: 100%">
+            <el-option label="待执行" value="待执行" />
+            <el-option label="执行中" value="执行中" />
+            <el-option label="已完成" value="已完成" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="addForm.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitAddForm" :loading="addLoading">
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -116,7 +184,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Search, ArrowLeft } from '@element-plus/icons-vue'
+import { Search, ArrowLeft, Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -144,6 +212,38 @@ const statusForm = reactive({
   currentStatus: '',
   newStatus: ''
 })
+
+// 新增计划相关
+const addDialogVisible = ref(false)
+const addLoading = ref(false)
+const addFormRef = ref(null)
+const patientNameInput = ref('')
+const addForm = reactive({
+  patientId: null,
+  planType: '月度随访',
+  cycle: '30 天',
+  nextTime: '',
+  status: '待执行',
+  remark: ''
+})
+
+const addRules = {
+  patientId: [
+    { required: true, message: '请选择患者', trigger: 'change' }
+  ],
+  planType: [
+    { required: true, message: '请选择计划类型', trigger: 'change' }
+  ],
+  cycle: [
+    { required: true, message: '请输入周期', trigger: 'blur' }
+  ],
+  nextTime: [
+    { required: true, message: '请选择下次随访时间', trigger: 'change' }
+  ],
+  status: [
+    { required: true, message: '请选择状态', trigger: 'change' }
+  ]
+}
 
 // 获取状态对应的标签类型
 const getStatusType = (status) => {
@@ -261,6 +361,117 @@ const handleSizeChange = () => {
 
 const handleCurrentChange = () => {
   loadData()
+}
+
+// 新增计划
+const handleAdd = () => {
+  addDialogVisible.value = true
+  patientNameInput.value = ''
+}
+
+// 搜索患者
+const searchPatient = async (queryString, cb) => {
+  try {
+    const res = await request.get('/patient/list', {
+      params: { page: 1, size: 100 }
+    })
+    if (res.code === 200) {
+      const patients = res.data.records || []
+      const results = queryString
+        ? patients.filter(p => p.realName && p.realName.includes(queryString))
+        : patients
+
+      const formattedResults = results.map(p => ({
+        value: p.realName,
+        id: p.userId
+      }))
+
+      cb(formattedResults)
+    } else {
+      cb([])
+    }
+  } catch (error) {
+    console.error('搜索患者失败', error)
+    cb([])
+  }
+}
+
+// 患者选择处理
+const handlePatientSelect = (item) => {
+  addForm.patientId = item.id
+  patientNameInput.value = item.value
+}
+
+// 计划类型变化时自动设置周期
+const handlePlanTypeChange = (value) => {
+  switch (value) {
+    case '月度随访':
+      addForm.cycle = '30 天'
+      break
+    case '季度随访':
+      addForm.cycle = '90 天'
+      break
+    case '年度随访':
+      addForm.cycle = '365 天'
+      break
+  }
+}
+
+// 重置新增表单
+const resetAddForm = () => {
+  if (addFormRef.value) {
+    addFormRef.value.resetFields()
+  }
+  addForm.patientId = null
+  addForm.planType = '月度随访'
+  addForm.cycle = '30 天'
+  addForm.nextTime = ''
+  addForm.status = '待执行'
+  addForm.remark = ''
+  patientNameInput.value = ''
+}
+
+// 提交新增表单
+const submitAddForm = async () => {
+  if (!addFormRef.value) return
+  
+  await addFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    addLoading.value = true
+    try {
+      if (!doctorId.value) {
+        ElMessage.error('未找到医生信息')
+        return
+      }
+
+      const data = {
+        patientId: addForm.patientId,
+        doctorId: doctorId.value,
+        planType: addForm.planType,
+        cycle: addForm.cycle,
+        nextTime: addForm.nextTime,
+        status: addForm.status,
+        remark: addForm.remark
+      }
+
+      console.log('=== 提交新增计划数据 ===', data)
+      const res = await request.post('/followup/plan', data)
+      
+      if (res.code === 200) {
+        ElMessage.success('新增成功')
+        addDialogVisible.value = false
+        loadData()
+      } else {
+        ElMessage.error(res.msg || '新增失败')
+      }
+    } catch (error) {
+      console.error('新增失败', error)
+      ElMessage.error('新增失败：' + (error.message || '未知错误'))
+    } finally {
+      addLoading.value = false
+    }
+  })
 }
 
 // 初始化

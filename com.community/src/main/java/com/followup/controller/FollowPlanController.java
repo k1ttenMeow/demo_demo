@@ -35,6 +35,71 @@ public class FollowPlanController {
     private DoctorMapper doctorMapper;
 
     /**
+     * 分页查询随访计划列表（管理员专用）
+     */
+    @GetMapping("/admin/list")
+    public R<Page<Map<String, Object>>> getAdminList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String patientName,
+            @RequestParam(required = false) String doctorName,
+            @RequestParam(required = false) String planType,
+            @RequestParam(required = false) String status
+    ) {
+        try {
+            Page<FollowPlan> followPage = followPlanService.getPlanList(page, size, patientName, doctorName, planType, status, null);
+
+            // 转换为 Map 并填充患者和医生姓名
+            List<Map<String, Object>> resultList = followPage.getRecords().stream().map(plan -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", plan.getId());
+                map.put("patientId", plan.getPatientId());
+                map.put("doctorId", plan.getDoctorId());
+                map.put("planType", plan.getPlanType());
+                map.put("cycle", plan.getCycle());
+                map.put("nextTime", plan.getNextTime());
+                map.put("status", plan.getStatus());
+                map.put("remark", plan.getRemark());
+
+                // 查询患者姓名（patient_id 对应 user.id）
+                if (plan.getPatientId() != null) {
+                    SysUser patientUser = sysUserMapper.selectById(plan.getPatientId());
+                    if (patientUser != null) {
+                        map.put("patientName", patientUser.getRealName());
+                    } else {
+                        map.put("patientName", null);
+                    }
+                } else {
+                    map.put("patientName", null);
+                }
+
+                // 查询医生姓名（doctor_id 对应 user.id）
+                if (plan.getDoctorId() != null) {
+                    SysUser doctorUser = sysUserMapper.selectById(plan.getDoctorId());
+                    if (doctorUser != null) {
+                        map.put("doctorName", doctorUser.getRealName());
+                    } else {
+                        map.put("doctorName", null);
+                    }
+                } else {
+                    map.put("doctorName", null);
+                }
+
+                return map;
+            }).collect(Collectors.toList());
+
+            Page<Map<String, Object>> resultPage = new Page<>(page, size);
+            resultPage.setRecords(resultList);
+            resultPage.setTotal(followPage.getTotal());
+
+            return R.success(resultPage);
+        } catch (Exception e) {
+            log.error("管理员查询随访计划列表异常", e);
+            return R.error("查询失败");
+        }
+    }
+
+    /**
      * 分页查询随访计划列表
      */
     @GetMapping("/list")

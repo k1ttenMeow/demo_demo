@@ -267,16 +267,13 @@ const loadData = async () => {
     const params = {
       page: currentPage.value,
       size: pageSize.value,
-      ...searchForm
+      patientName: searchForm.patientName,
+      doctorName: searchForm.doctorName,
+      planType: searchForm.planType,
+      status: searchForm.status
     }
     
-    // ✅ 如果是医生，只查询自己的随访计划
-    if (currentUser.userType === 2 && currentUser.id) {
-      params.doctorId = currentUser.id
-      console.log('=== 医生查看自己的随访计划，doctorId:', currentUser.id)
-    }
-    
-    const res = await request.get('/followup/plan/list', { params })
+    const res = await request.get('/followup/plan/admin/list', { params })
     if (res.code === 200) {
       tableData.value = res.data.records || []
       total.value = res.data.total || 0

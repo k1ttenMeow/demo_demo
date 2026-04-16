@@ -33,6 +33,7 @@
           <el-descriptions-item label="慢病类型">{{ userInfo.chronicType || '-' }}</el-descriptions-item>
           <el-descriptions-item label="责任医生">{{ userInfo.doctorName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="手机号">{{ userInfo.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="身份证号">{{ userInfo.idCard || '-' }}</el-descriptions-item>
           <el-descriptions-item label="家庭住址" :span="2">{{ userInfo.address || '-' }}</el-descriptions-item>
           <el-descriptions-item label="紧急联系人">{{ userInfo.emergencyContact || '-' }}</el-descriptions-item>
           <el-descriptions-item label="紧急电话">{{ userInfo.emergencyPhone || '-' }}</el-descriptions-item>
@@ -115,7 +116,11 @@
         <el-form-item label="年龄" prop="age">
           <el-input-number v-model="editForm.age" :min="1" :max="150" style="width: 100%" />
         </el-form-item>
-        
+
+        <el-form-item label="身份证号" prop="idCard">
+          <el-input v-model="editForm.idCard" placeholder="请输入身份证号" maxlength="18" />
+        </el-form-item>
+
         <el-form-item label="慢病类型" prop="chronicType">
           <el-select v-model="editForm.chronicType" placeholder="请选择慢病类型" style="width: 100%">
             <el-option label="高血压" value="高血压" />
@@ -171,6 +176,7 @@ const userInfo = reactive({
   chronicType: '',
   doctorName: '',
   phone: '',
+  idCard: '',
   address: '',
   emergencyContact: '',
   emergencyPhone: ''
@@ -185,6 +191,7 @@ const editForm = reactive({
   realName: '',
   gender: 0,
   age: 0,
+    idCard: '',
   chronicType: '',
   phone: '',
   address: '',
@@ -309,6 +316,7 @@ const processUserInfo = async (user) => {
       userInfo.address = patient.address || ''
       userInfo.doctorName = patient.doctorName || '未分配'
       userInfo.phone = patient.phone || user.phone || ''
+      userInfo.idCard = patient.idCard || ''
       userInfo.emergencyContact = patient.emergencyContact || ''
       userInfo.emergencyPhone = patient.emergencyPhone || ''
 
@@ -331,6 +339,7 @@ const openEditDialog = () => {
   editForm.realName = userInfo.realName
   editForm.gender = userInfo.gender
   editForm.age = userInfo.age
+  editForm.idCard = userInfo.idCard
   editForm.chronicType = userInfo.chronicType
   editForm.phone = userInfo.phone
   editForm.address = userInfo.address
@@ -392,6 +401,7 @@ const submitEdit = async () => {
         doctorId: patientRecord.doctorId,  // 保持原医生 ID
         chronicType: editForm.chronicType,
         age: editForm.age,
+        idCard: editForm.idCard,
         address: editForm.address,
         emergencyContact: editForm.emergencyContact,
         emergencyPhone: editForm.emergencyPhone,

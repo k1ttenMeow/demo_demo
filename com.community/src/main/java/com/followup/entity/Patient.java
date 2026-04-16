@@ -66,6 +66,11 @@ public class Patient implements Serializable {
     private String emergencyPhone;
 
     /**
+     * 身份证号
+     */
+    private String idCard;
+
+    /**
      * 患者姓名（关联查询字段，非数据库字段）
      */
     @TableField(exist = false)
